@@ -1,0 +1,23 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/init.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_www:/var/www/certbot:ro
+  certbot:
+    image: certbot/certbot:v4.0.0
+    container_name: certbot
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+      - ./certbot/init-cert.sh:/init-cert.sh:ro
+    entrypoint: ""
+    command: sh -c "sleep 5 && sh /init-cert.sh"
+
+volumes:
+    letsencrypt:
+    certbot_www:
