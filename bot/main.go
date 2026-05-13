@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	groupmanage "github.com/chinapat317/SamDang/db-manage"
+	botbackend "github.com/chinapat317/SamDang/bot-backend"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
@@ -20,6 +20,7 @@ func main() {
 	secret := os.Getenv("LINE_CHANNEL_SECRET")
 	token := os.Getenv("LINE_CHANNEL_ACCESS_TOKEN")
 	db_url := os.Getenv("DB_URL")
+	db_hmac := os.Getenv("LINE_USER_HMAC_KEY")
 	if secret == "" ||
 		token == "" ||
 		db_url == "" {
@@ -31,6 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Connected to line api")
 
 	//db connect
 	db, err := sql.Open("pgx", db_url)
@@ -38,15 +40,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	if err := db.PingContext(ctx); err != nil {
 		log.Fatal("db ping failed:", err)
 	}
-
-	log.Println("connected")
+	log.Println("Connected to DB")
 
 	mux := http.NewServeMux()
 
@@ -66,43 +65,11 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-
-		events, err := bot.ParseRequest(r) // verifies X-Line-Signature + parses JSON
-		if err != nil {
-			if err == linebot.ErrInvalidSignature {
-				http.Error(w, "invalid signature", http.StatusBadRequest)
-				return
-			}
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
-		}
-
-		for _, event := range events {
-			if event.Type == linebot.EventTypeJoin {
-				if event.Source != nil {
-					if event.Source.Type == linebot.EventSourceTypeGroup {
-						groupmanage.GroupCreate(ctx, db, event.Source.GroupID)
-					}
-				} else {
-					log.Printf("JOIN event: source is nil\n")
-				}
-				continue
-			} else if event.Type == linebot.EventTypeMessage {
-				switch m := event.Message.(type) {
-				case *linebot.TextMessage:
-					log.Printf("LINE text from %s: %s\n", event.Source.UserID, m.Text)
-				default:
-					log.Printf("LINE message type: %T from %s\n", event.Message, event.Source.UserID)
-				}
-				continue
-			} else {
-				log.Printf("LINE event type: %s\n", event.Type)
-			}
-		}
-
+		log.Println("Request in")
+		events := botbackend.VerifySig(r, w, bot)
+		botbackend.EventController(events, bot, db, db_hmac)
 		// HTTP response to LINE server (must be 200)
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("Received"))
 	})
 
 	port := os.Getenv("PORT")
