@@ -30,12 +30,15 @@ func EventController(events []*linebot.Event,
 	for _, event := range events {
 		if event.Type == linebot.EventTypeJoin {
 			BotJoinGroup(event, db)
+		} else if event.Type == linebot.EventTypeLeave {
+			BotLeaveGroup(event, db)
 		} else if event.Type == linebot.EventTypeMessage {
 			msg, ok := event.Message.(*linebot.TextMessage)
 			if ok {
 				if msg.Text == "@Samdang เพิ่มฉัน" {
 					AddGroupMember(event, db, bot, db_hmac)
 				}
+
 			}
 		} else {
 			log.Printf("LINE event type: %s\n", event.Type)
@@ -47,7 +50,19 @@ func BotJoinGroup(event *linebot.Event,
 	db *sql.DB) {
 	if event.Source != nil {
 		if event.Source.Type == linebot.EventSourceTypeGroup {
-			dbmanage.GroupCreate(db, event.Source.GroupID)
+			dbmanage.GroupJoined(db, event.Source.GroupID)
+		}
+	} else {
+		log.Printf("JOIN event: source is nil\n")
+	}
+	return
+}
+
+func BotLeaveGroup(event *linebot.Event,
+	db *sql.DB) {
+	if event.Source != nil {
+		if event.Source.Type == linebot.EventSourceTypeGroup {
+			dbmanage.GroupLeave(db, event.Source.GroupID)
 		}
 	} else {
 		log.Printf("JOIN event: source is nil\n")

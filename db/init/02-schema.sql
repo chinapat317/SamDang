@@ -18,8 +18,25 @@ CREATE TABLE users (
 CREATE TABLE IF NOT EXISTS line_groups (
   id            BIGSERIAL PRIMARY KEY,
   line_group_id TEXT NOT NULL UNIQUE,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  joined_status TEXT NOT NULL CHECK (joined_status IN ('joined', 'leave')),
+  latest_update TIMESTAMPTZ NOT NULL DEFAULT now() 
 );
+
+CREATE OR REPLACE FUNCTION set_latest_update()
+RETURNS trigger AS $$
+BEGIN
+  NEW.latest_update = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_line_groups_latest_update ON line_groups;
+
+CREATE TRIGGER trg_line_groups_latest_update
+BEFORE UPDATE ON line_groups
+FOR EACH ROW
+EXECUTE FUNCTION set_latest_update();
 
 CREATE TABLE IF NOT EXISTS group_members (
   line_group_id   BIGINT NOT NULL REFERENCES line_groups(id) ON DELETE CASCADE,

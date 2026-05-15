@@ -8,15 +8,29 @@ import (
 	"time"
 )
 
-func GroupCreate(db *sql.DB, gid string) error {
+func GroupJoined(db *sql.DB, gid string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err := db.ExecContext(ctx, `
-		INSERT INTO line_groups (line_group_id)
-		VALUES ($1)
-		ON CONFLICT (line_group_id) DO NOTHING
+		INSERT INTO line_groups (line_group_id, joined_status, latest_update)
+		VALUES ($1, 'joined', now())
+		ON CONFLICT (line_group_id)
+		DO UPDATE SET
+			joined_status = 'joined'
 	`, gid)
-	log.Printf("GroupCreate error: %s\n", err)
+	log.Printf("GroupJoined error: %s\n", err)
+	return err
+}
+
+func GroupLeave(db *sql.DB, gid string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err := db.ExecContext(ctx, `
+		UPDATE line_groups
+		SET joined_status = 'leave'
+		WHERE line_group_id = $1
+		`, gid)
+	log.Printf("GroupLeave error: %s\n", err)
 	return err
 }
 
