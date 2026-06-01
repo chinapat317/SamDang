@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"log"
 	"time"
 )
 
@@ -33,4 +34,25 @@ func AddUser(db *sql.DB,
 			updated_at     = now()
 	`, uid, h, name, pic)
 	return err
+}
+
+func GetUserProf(uid string, db *sql.DB) (string, string, bool) {
+	var (
+		name string
+		pic  string
+	)
+	is_error := false
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	err := db.QueryRowContext(ctx, `
+		SELECT display_name, picture_url
+		FROM users
+		WHERE line_user_id = $1
+	`, uid).Scan(&name, &pic)
+	if err != nil {
+		// uid not found OR other error
+		log.Printf("GetUserProf error: %v\n", err)
+		is_error = true
+	}
+	return name, pic, is_error
 }

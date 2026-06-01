@@ -2,13 +2,38 @@ package botbackend
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
 	dbmanage "github.com/chinapat317/SamDang/db-manage"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
+
+func GetGroupSummary(groupId string, channelToken string) (string, error) {
+	url := "https://api.line.me/v2/bot/group/" + groupId + "/summary"
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Authorization", "Bearer "+channelToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("line api error %s: %s", resp.Status, string(b))
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+		return "", err
+	}
+
+	return data.GroupName, nil
+}
 
 func VerifySig(r *http.Request, w http.ResponseWriter, bot *linebot.Client) []*linebot.Event {
 	events, err := bot.ParseRequest(r) // verifies X-Line-Signature + parses JSON
@@ -26,10 +51,11 @@ func VerifySig(r *http.Request, w http.ResponseWriter, bot *linebot.Client) []*l
 func EventController(events []*linebot.Event,
 	bot *linebot.Client,
 	db *sql.DB,
-	db_hmac string) {
+	db_hmac string,
+	token string) {
 	for _, event := range events {
 		if event.Type == linebot.EventTypeJoin {
-			BotJoinGroup(event, db)
+			BotJoinGroup(event, db, token)
 		} else if event.Type == linebot.EventTypeLeave {
 			BotLeaveGroup(event, db)
 		} else if event.Type == linebot.EventTypeMessage {
@@ -47,10 +73,12 @@ func EventController(events []*linebot.Event,
 }
 
 func BotJoinGroup(event *linebot.Event,
-	db *sql.DB) {
+	db *sql.DB,
+	token string) {
 	if event.Source != nil {
 		if event.Source.Type == linebot.EventSourceTypeGroup {
-			dbmanage.GroupJoined(db, event.Source.GroupID)
+			gname, _ := GetGroupSummary(event.Source.GroupID, token)
+			dbmanage.GroupJoined(db, event.Source.GroupID, gname)
 		}
 	} else {
 		log.Printf("JOIN event: source is nil\n")

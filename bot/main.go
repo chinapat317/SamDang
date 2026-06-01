@@ -9,6 +9,7 @@ import (
 	"time"
 
 	botbackend "github.com/chinapat317/SamDang/bot-backend"
+	api "github.com/chinapat317/SamDang/front-handler"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
@@ -59,15 +60,37 @@ func main() {
 		_, _ = w.Write([]byte("Services running"))
 	})
 
+	//POST api for Frontend
+	mux.HandleFunc("/api/post/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		switch r.URL.Path {
+		case "/api/post/prof":
+			api.ProfHandler(w, r, db)
+			return
+		case "/api/post/gmem":
+			api.GroupMemHandler(w, r, db)
+			return
+		case "/api/post/gname":
+			api.GroupNameHandler(w, r, db)
+		case "/api/post/task/assign":
+			api.TaskAssignHandler(w, r, db)
+		default:
+			http.NotFound(w, r)
+			return
+		}
+	})
+
 	//Post api from linebot
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		log.Println("Request in")
 		events := botbackend.VerifySig(r, w, bot)
-		botbackend.EventController(events, bot, db, db_hmac)
+		botbackend.EventController(events, bot, db, db_hmac, token)
 		// HTTP response to LINE server (must be 200)
 		w.WriteHeader(http.StatusOK)
 	})

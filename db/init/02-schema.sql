@@ -1,26 +1,35 @@
-\connect "AppDB";
+\connect "AppDB"
 
--- put your CREATE TABLE statements here
--- (users, line_groups, group_members, works)
-
-CREATE TABLE users (
-  id             BIGSERIAL PRIMARY KEY,
-  line_user_id   TEXT NOT NULL UNIQUE,          -- real ID for LINE API
-  line_user_hmac TEXT NOT NULL UNIQUE,          -- privacy-friendly ID (HMAC)
-
-  display_name   TEXT,
-  picture_url    TEXT,
-
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE IF NOT EXISTS tenant (
+  id            BIGSERIAL PRIMARY KEY,
+  tenant_name   TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS line_groups (
-  id            BIGSERIAL PRIMARY KEY,
-  line_group_id TEXT NOT NULL UNIQUE,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  joined_status TEXT NOT NULL CHECK (joined_status IN ('joined', 'leave')),
-  latest_update TIMESTAMPTZ NOT NULL DEFAULT now() 
+CREATE TABLE IF NOT EXISTS line_users (
+  id              BIGSERIAL PRIMARY KEY,
+  line_user_id    TEXT NOT NULL UNIQUE,
+  line_user_hmac  TEXT NOT NULL UNIQUE,
+  display_name    TEXT,
+  picture_url     TEXT,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS tenant_members (
+  tenant_id    BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+  line_user_id BIGINT NOT NULL REFERENCES line_users(id) ON DELETE CASCADE,
+  tenant_role  TEXT NOT NULL CHECK (tenant_role IN ('admin', 'proj_manage')),
+  PRIMARY KEY (tenant_id, line_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS tenant_line_groups (
+  id              BIGSERIAL PRIMARY KEY,
+  line_group_id   TEXT NOT NULL UNIQUE,
+  line_group_name TEXT NOT NULL,
+  tenant_id       BIGINT NULL REFERENCES tenant(id)
+                  ON UPDATE CASCADE
+                  ON DELETE SET NULL,
+  joined_status   TEXT NOT NULL CHECK (joined_status IN ('joined', 'leave')),
+  latest_update   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE OR REPLACE FUNCTION set_latest_update()
@@ -31,40 +40,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS trg_line_groups_latest_update ON line_groups;
+DROP TRIGGER IF EXISTS trg_tenant_line_groups_latest_update
+ON tenant_line_groups;
 
-CREATE TRIGGER trg_line_groups_latest_update
-BEFORE UPDATE ON line_groups
+CREATE TRIGGER trg_tenant_line_groups_latest_update
+BEFORE UPDATE ON tenant_line_groups
 FOR EACH ROW
 EXECUTE FUNCTION set_latest_update();
 
-CREATE TABLE IF NOT EXISTS group_members (
-  line_group_id   BIGINT NOT NULL REFERENCES line_groups(id) ON DELETE CASCADE,
-  line_user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  role       TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('member','manager')),
-  joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+CREATE TABLE IF NOT EXISTS line_group_members (
+  line_group_id BIGINT NOT NULL REFERENCES tenant_line_groups(id)
+                ON DELETE CASCADE,
+  line_user_id  BIGINT NOT NULL REFERENCES line_users(id)
+                ON DELETE CASCADE,
+  joined_status       TEXT NOT NULL CHECK (joined_status IN ('joined', 'leave')),
+  latest_update       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (line_group_id, line_user_id)
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS group_one_manager
-ON group_members(line_group_id)
-WHERE role = 'manager';
-
-CREATE TABLE IF NOT EXISTS works (
-  id           BIGSERIAL PRIMARY KEY,
-  line_group_id     BIGINT NOT NULL REFERENCES line_groups(id) ON DELETE CASCADE,
-  title        TEXT NOT NULL,
-  description  TEXT,
-  assigned_to  BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  assigned_by  BIGINT NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  assigned_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-  deadline_at  TIMESTAMPTZ NOT NULL,
-  status       TEXT NOT NULL DEFAULT 'open'
-              CHECK (status IN ('open','in_progress','done','cancelled')),
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS works_by_group    ON works(line_group_id, assigned_at DESC);
-CREATE INDEX IF NOT EXISTS works_by_assignee ON works(assigned_to, status, deadline_at);
-CREATE INDEX IF NOT EXISTS works_by_assigner ON works(assigned_by, assigned_at DESC);
+CREATE TABLE IF NOT EXISTS task (
+  id              BIGSERIAL PRIMARY KEY,
+  tenant_id       BIGINT NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+  title           TEXT NOT NULL,
+  description     TEXT,
+  status          TEXT NOT NULL CHECK (status IN ('in_progress', 'done')),
+  assigned_to     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
+  assigned_by     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  due_date        TIMESTAMPTZ NOT NULL,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+)
