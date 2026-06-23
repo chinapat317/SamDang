@@ -54,6 +54,10 @@ func EventController(events []*linebot.Event,
 						RegisterGroup(event, db, bot)
 						return
 					}
+					if msg.Text == "@Samdang งานที่ดำเนินการในกลุ่ม" {
+						ListGroupTask(event, db, bot)
+						return
+					}
 				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@Samdang เพิ่ม admin") {
 					AddRole(event, db, bot, db_hmac, "admin", "addAdmin")
 					return
@@ -105,7 +109,7 @@ func RegisterGroup(event *linebot.Event,
 		).Do()
 		return
 	}
-	err = dbmanage.GroupRegister(db, event.Source.GroupID, gname, 0)
+	err = dbmanage.GroupRegister(db, event.Source.GroupID, gname)
 	if err != nil {
 		log.Printf("GroupRegister error: %s", err)
 		err_mes := fmt.Sprintf("ไม่สามารถลงทะเบียนกลุ่มได้ เนื่องจาก group sql errorกรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
@@ -237,4 +241,50 @@ func AddRole(event *linebot.Event,
 		linebot.NewTextMessage(fmt.Sprintf("เพิ่มสิทธิ์ %s เรียบร้อยค่ะ", role)),
 	).Do()
 	dbmanage.ChangeCode(codeName, 8, db)
+}
+
+func ListGroupInProgressTasks(event *linebot.Event, db *sql.DB, bot *linebot.Client) {
+	groupId := event.Source.GroupID
+	response, err := BuildGroupInProgressTaskMessage(db, groupId)
+	if err != nil {
+		log.Printf("BuildGroupTaskMessage error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("ไม่สามารถดึงงานในกลุ่มได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา"),
+		).Do()
+		return
+	}
+	if false {
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("ยังไม่มีงานในกลุ่มนี้ค่ะ"),
+		).Do()
+		return
+	}
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(response),
+	).Do()
+}
+
+func SendDailyGroupInProgressTasks(db *sql.DB, bot *linebot.Client) {
+	groups, err := dbmanage.GetJoinedGroups(db)
+	if err != nil {
+		log.Printf("GetJoinedGroups error: %s", err)
+		return
+	}
+
+	for _, group := range groups {
+		message, err := BuildGroupInProgressTaskMessage(db, group.LineGroupID)
+		if err != nil {
+			log.Printf("BuildGroupTaskMessage error for group %s: %s", group.LineGroupID, err)
+			continue
+		}
+		if _, err := bot.PushMessage(
+			group.LineGroupID,
+			linebot.NewTextMessage(message),
+		).Do(); err != nil {
+			log.Printf("Push daily task list error for group %s: %s", group.LineGroupID, err)
+		}
+	}
 }

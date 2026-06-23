@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS task (
   id              BIGSERIAL PRIMARY KEY,
   title           TEXT NOT NULL,
   description     TEXT,
-  status          TEXT NOT NULL CHECK (status IN ('in_progress', 'done')),
+  status          TEXT NOT NULL CHECK (status IN ('in progress', 'done')),
   assigned_to     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
   assigned_by     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

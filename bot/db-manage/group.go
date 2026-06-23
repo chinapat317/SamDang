@@ -13,7 +13,7 @@ func GroupRegister(db *sql.DB, gid string, gname string) error {
 	defer cancel()
 	_, err := db.ExecContext(ctx, `
 		INSERT INTO line_groups (line_group_id, line_group_name, joined_status, latest_update)
-		VALUES ($1, $2, $3, 'joined', now())
+		VALUES ($1, $2, 'joined', now())
 		ON CONFLICT (line_group_id)
 		DO UPDATE SET
 			joined_status = 'joined',
@@ -74,4 +74,33 @@ func GetGroupMember(db *sql.DB, gid string) (*sql.Rows, bool) {
 		rows = nil
 	}
 	return rows, is_error
+}
+
+func GetJoinedGroups(db *sql.DB) ([]GroupInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := db.QueryContext(ctx, `
+		SELECT line_group_id
+		FROM line_groups
+		WHERE joined_status = 'joined'
+		ORDER BY line_group_name ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []GroupInfo
+	for rows.Next() {
+		var group GroupInfo
+		if err := rows.Scan(&group.LineGroupID); err != nil {
+			return nil, err
+		}
+		groups = append(groups, group)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return groups, nil
 }
