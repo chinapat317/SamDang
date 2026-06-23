@@ -2,46 +2,31 @@ package botbackend
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	dbmanage "github.com/chinapat317/SamDang/db-manage"
+	"github.com/gin-gonic/gin"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
 )
 
-func GetGroupSummary(groupId string, channelToken string) (string, error) {
-	url := "https://api.line.me/v2/bot/group/" + groupId + "/summary"
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+channelToken)
-
-	resp, err := http.DefaultClient.Do(req)
+func GetGroupSummary(groupId string, bot *linebot.Client) (string, error) {
+	summary, err := bot.GetGroupSummary(groupId).Do()
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("line api error %s: %s", resp.Status, string(b))
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", err
-	}
-
-	return data.GroupName, nil
+	return summary.GroupName, nil
 }
 
-func VerifySig(r *http.Request, w http.ResponseWriter, bot *linebot.Client) []*linebot.Event {
-	events, err := bot.ParseRequest(r) // verifies X-Line-Signature + parses JSON
+func VerifySig(c *gin.Context, bot *linebot.Client) []*linebot.Event {
+	events, err := bot.ParseRequest(c.Request) // verifies X-Line-Signature + parses JSON
 	if err != nil {
 		if err == linebot.ErrInvalidSignature {
-			http.Error(w, "invalid signature", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "invalid signature")
 		} else {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			c.String(http.StatusBadRequest, "bad request")
 		}
 		events = nil
 	}
@@ -51,20 +36,37 @@ func VerifySig(r *http.Request, w http.ResponseWriter, bot *linebot.Client) []*l
 func EventController(events []*linebot.Event,
 	bot *linebot.Client,
 	db *sql.DB,
-	db_hmac string,
-	token string) {
+	db_hmac string) {
 	for _, event := range events {
-		if event.Type == linebot.EventTypeJoin {
-			BotJoinGroup(event, db, token)
-		} else if event.Type == linebot.EventTypeLeave {
+		if event.Type == linebot.EventTypeLeave {
 			BotLeaveGroup(event, db)
-		} else if event.Type == linebot.EventTypeMessage {
+			return
+		}
+		if event.Type == linebot.EventTypeMessage {
 			msg, ok := event.Message.(*linebot.TextMessage)
 			if ok {
-				if msg.Text == "@Samdang เพิ่มฉัน" {
-					AddGroupMember(event, db, bot, db_hmac)
+				if event.Source.Type == linebot.EventSourceTypeGroup {
+					if msg.Text == "@Samdang เพิ่มฉัน" {
+						AddGroupMember(event, db, bot, db_hmac)
+						return
+					}
+					if msg.Text == "@Samdang ลงทะเบียนกลุ่ม" {
+						RegisterGroup(event, db, bot)
+						return
+					}
+				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@Samdang เพิ่ม admin") {
+					AddRole(event, db, bot, db_hmac, "admin", "addAdmin")
+					return
+				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@Samdang เพิ่ม manager") {
+					AddRole(event, db, bot, db_hmac, "manager", "addManager")
+					return
+				} else {
+					err_mes := fmt.Sprintf("ผู้ใช้ไม่ได้อยู่ในกลุ่มไลน์ กรุณากดลงทะเบียนเฉพาะตอนอยู่ในกลุ่มไลน์", event.Source.UserID)
+					_, _ = bot.ReplyMessage(
+						event.ReplyToken,
+						linebot.NewTextMessage(err_mes),
+					).Do()
 				}
-
 			}
 		} else {
 			log.Printf("LINE event type: %s\n", event.Type)
@@ -72,30 +74,53 @@ func EventController(events []*linebot.Event,
 	}
 }
 
-func BotJoinGroup(event *linebot.Event,
-	db *sql.DB,
-	token string) {
-	if event.Source != nil {
-		if event.Source.Type == linebot.EventSourceTypeGroup {
-			gname, _ := GetGroupSummary(event.Source.GroupID, token)
-			dbmanage.GroupJoined(db, event.Source.GroupID, gname)
-		}
-	} else {
-		log.Printf("JOIN event: source is nil\n")
-	}
-	return
-}
-
 func BotLeaveGroup(event *linebot.Event,
 	db *sql.DB) {
-	if event.Source != nil {
-		if event.Source.Type == linebot.EventSourceTypeGroup {
-			dbmanage.GroupLeave(db, event.Source.GroupID)
-		}
+	if event.Source.Type == linebot.EventSourceTypeGroup {
+		dbmanage.GroupLeave(db, event.Source.GroupID)
 	} else {
-		log.Printf("JOIN event: source is nil\n")
+		log.Printf("Leave event: source is nil\n")
 	}
-	return
+}
+
+func RegisterGroup(event *linebot.Event,
+	db *sql.DB,
+	bot *linebot.Client) {
+	_, err := dbmanage.CheckUserRole(event.Source.UserID, db, "manager")
+	if err != nil {
+		err_mes := fmt.Sprintf("ผู้ใช้@%sไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท", event.Source.UserID)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
+	}
+	gname, err := GetGroupSummary(event.Source.GroupID, bot)
+	if err != nil {
+		log.Printf("GetGroupSummary error: %s", err)
+		err_mes := fmt.Sprintf("ไม่สามารถค้นหากลุ่มด้วยไลน์ api ได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา")
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
+	}
+	err = dbmanage.GroupRegister(db, event.Source.GroupID, gname, 0)
+	if err != nil {
+		log.Printf("GroupRegister error: %s", err)
+		err_mes := fmt.Sprintf("ไม่สามารถลงทะเบียนกลุ่มได้ เนื่องจาก group sql errorกรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
+	}
+	log.Printf("GroupRegister successfully")
+	msg := fmt.Sprintf("ลงทะเบียนกลุ่มเรียบร้อยค่ะ คุณสามารถใช้คำสั่งต่างๆของ Samdang ได้แล้วค่ะ")
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(msg),
+	).Do()
 }
 
 func AddGroupMember(event *linebot.Event,
@@ -108,33 +133,108 @@ func AddGroupMember(event *linebot.Event,
 	)
 	uid := event.Source.UserID
 	gid := event.Source.GroupID
-	prof, err := bot.GetGroupMemberProfile(gid, uid).Do()
+	prof, err := bot.GetProfile(uid).Do()
 	if err != nil {
-		log.Printf("GetGroupMemberProfile error: %s", err)
-	} else {
-		name = prof.DisplayName
-		pic = prof.PictureURL
-		err = dbmanage.AddUser(db, uid, name, pic, db_hmac)
-		if err != nil {
-			log.Printf("GetGroupMemberProfile error: %s", err)
-		} else {
-			err = dbmanage.AddMemberToGroup(db, uid, gid)
-			if err != nil {
-				log.Println("AddMemberToGroup error:", err)
-				err_mes := fmt.Sprintf("เพิ่ม@%sไม่สำเร็จ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
-				_, _ = bot.ReplyMessage(
-					event.ReplyToken,
-					linebot.NewTextMessage(err_mes),
-				).Do()
-			} else {
-				log.Printf("regis successfully")
-				msg := fmt.Sprintf("เพิ่มคุณ@%sลงในกลุ่มเรียบร้อยค่ะ", name)
-				_, _ = bot.ReplyMessage(
-					event.ReplyToken,
-					linebot.NewTextMessage(msg),
-				).Do()
-			}
-		}
+		log.Printf("GetProfile error: %s", err)
+		err_mes := fmt.Sprintf("ไม่สามารถค้นหาข้อมูลผู้ใช้ด้วยไลน์ api ได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา")
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
 	}
-	return
+	name = prof.DisplayName
+	pic = prof.PictureURL
+	err = dbmanage.AddUser(db, uid, name, pic, db_hmac)
+	if err != nil {
+		log.Printf("AddUser error: %s", err)
+		err_mes := fmt.Sprintf("ไม่สามารถเพิ่มผู้ใช้ในระบบได้ เนื่องจาก sql error กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
+	}
+	err = dbmanage.AddMemberToGroup(db, uid, gid)
+	if err != nil {
+		log.Println("AddMemberToGroup error:", err)
+		err_mes := fmt.Sprintf("เพิ่ม@%sไม่สำเร็จ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+	}
+	log.Printf("regis successfully")
+	msg := fmt.Sprintf("เพิ่มคุณ@%sลงในกลุ่มเรียบร้อยค่ะ", name)
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(msg),
+	).Do()
+}
+
+func AddRole(event *linebot.Event,
+	db *sql.DB,
+	bot *linebot.Client,
+	db_hmac string,
+	role string,
+	codeName string) {
+	msg, ok := event.Message.(*linebot.TextMessage)
+	uid := event.Source.UserID
+	code, has_code, _ := GetCode(msg.Text, 8)
+	if !has_code {
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(fmt.Sprintf("ไม่พบ %s code ในข้อความ กรุณาพิมพ์คำสั่งในรูปแบบ\n'@Samdang เพิ่ม %s <%s code>", role, role, role)),
+		).Do()
+		return
+	}
+	ok, err := dbmanage.CheckCode(db, codeName, code)
+	if err != nil {
+		log.Printf("CheckCode error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(fmt.Sprintf("ไม่สามารถตรวจสอบ %s code ได้ กรุณาลองอีกครั้ง", role)),
+		).Do()
+		return
+	}
+	if !ok {
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(fmt.Sprintf("%s code ไม่ถูกต้อง", role)),
+		).Do()
+		return
+	}
+	prof, err := bot.GetProfile(uid).Do()
+	if err != nil {
+		log.Printf("GetProfile error: %s", err)
+		err_mes := fmt.Sprintf("ไม่สามารถค้นหาข้อมูลผู้ใช้ด้วยไลน์ api ได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา")
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(err_mes),
+		).Do()
+		return
+	}
+	displayName := prof.DisplayName
+	pic := prof.PictureURL
+	if err := dbmanage.AddUser(db, uid, displayName, pic, db_hmac); err != nil {
+		log.Printf("AddUser error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("ไม่สามารถเพิ่มผู้ใช้ในระบบได้ เนื่องจาก sql error กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา"),
+		).Do()
+		return
+	}
+	if err := dbmanage.UpdateUserRole(db, uid, role); err != nil {
+		log.Printf("UpdateUserRole error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage(fmt.Sprintf("ไม่สามารถเพิ่มสิทธิ์ %s ได้ กรุณาลองอีกครั้ง", role)),
+		).Do()
+		return
+	}
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(fmt.Sprintf("เพิ่มสิทธิ์ %s เรียบร้อยค่ะ", role)),
+	).Do()
+	dbmanage.ChangeCode(codeName, 8, db)
 }

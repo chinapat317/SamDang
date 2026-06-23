@@ -9,7 +9,7 @@ import (
 	"time"
 
 	botbackend "github.com/chinapat317/SamDang/bot-backend"
-	api "github.com/chinapat317/SamDang/front-handler"
+	"github.com/gin-gonic/gin"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/joho/godotenv"
 	"github.com/line/line-bot-sdk-go/v7/linebot"
@@ -48,51 +48,23 @@ func main() {
 	}
 	log.Println("Connected to DB")
 
-	mux := http.NewServeMux()
+	router := gin.Default()
+	router.HandleMethodNotAllowed = true
 
 	//Check server status
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("Services running"))
-	})
-
-	//POST api for Frontend
-	mux.HandleFunc("/api/post/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		switch r.URL.Path {
-		case "/api/post/prof":
-			api.ProfHandler(w, r, db)
-			return
-		case "/api/post/gmem":
-			api.GroupMemHandler(w, r, db)
-			return
-		case "/api/post/gname":
-			api.GroupNameHandler(w, r, db)
-		case "/api/post/task/assign":
-			api.TaskAssignHandler(w, r, db)
-		default:
-			http.NotFound(w, r)
-			return
-		}
+	router.GET("/", func(c *gin.Context) {
+		c.String(http.StatusOK, "Services running")
 	})
 
 	//Post api from linebot
-	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	router.POST("/callback", func(c *gin.Context) {
+		events := botbackend.VerifySig(c, bot)
+		if events == nil {
 			return
 		}
-		events := botbackend.VerifySig(r, w, bot)
-		botbackend.EventController(events, bot, db, db_hmac, token)
+		botbackend.EventController(events, bot, db, db_hmac)
 		// HTTP response to LINE server (must be 200)
-		w.WriteHeader(http.StatusOK)
+		c.Status(http.StatusOK)
 	})
 
 	port := os.Getenv("PORT")
@@ -101,5 +73,5 @@ func main() {
 	}
 
 	log.Println("Listening on :" + port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
+	log.Fatal(router.Run(":" + port))
 }

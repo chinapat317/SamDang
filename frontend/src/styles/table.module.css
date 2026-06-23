@@ -1,0 +1,134 @@
+/* Container */
+.statusLine {
+  margin-bottom: 12px;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Table shell */
+.tableShell {
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+}
+
+.scrollX {
+  overflow-x: auto;
+}
+
+.tableMinWidth {
+  min-width: 900px;
+}
+
+/* Grid header + row */
+.gridHeader {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 2fr 1.2fr 1.2fr 0.7fr;
+  background: #fafafa;
+  border-bottom: 1px solid #e5e5e5;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 2fr 1.2fr 1.2fr 0.7fr;
+  border-bottom: 1px solid #f0f0f0;
+  align-items: center;
+}
+
+.cell {
+  padding: 12px;
+}
+
+.cellRight {
+  padding: 12px;
+  text-align: right;
+}
+
+/* Inputs */
+.select,
+.input,
+.dateInput {
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  box-sizing: border-box;
+}
+
+.readonlyBox {
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid #eee;
+  background: #f7f7f7;
+  color: #333;
+  box-sizing: border-box;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Buttons */
+.btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btnAdd {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Sticky bottom bar */
+.bottomBar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding-top: 12px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+}
+
+.bottomRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.submitStatus {
+  min-height: 20px;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.assignBtn {
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: none;
+  background: black;
+  color: white;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assignBtnDisabled {
+  background: #444;
+  cursor: not-allowed;
+}

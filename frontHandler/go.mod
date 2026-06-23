@@ -1,4 +1,4 @@
-module github.com/chinapat317/SamDang
+module frontHandler
 
 go 1.25.5
 
@@ -6,7 +6,6 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/joho/godotenv v1.5.1
-	github.com/line/line-bot-sdk-go/v7 v7.21.0
 )
 
 require (
