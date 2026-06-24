@@ -20,7 +20,7 @@ Create table if not exists admin_code (
 INSERT INTO admin_code (name, code)
 VALUES
   ('addManager', substr(md5(random()::text), 1, 7)),
-  ('addAdmin', "dangtuaD")
+  ('addAdmin', 'dangtuaD')
 ON CONFLICT (name) DO UPDATE SET
   code = EXCLUDED.code;
 
@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS task (
   status          TEXT NOT NULL CHECK (status IN ('in progress', 'done')),
   assigned_to     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
   assigned_by     BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
+  assigned_group  BIGINT REFERENCES line_groups(id) ON DELETE SET NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   due_date        TIMESTAMPTZ NOT NULL,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
-)
+);

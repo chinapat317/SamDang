@@ -40,7 +40,7 @@ func BuildGroupInProgressTaskMessage(db *sql.DB, groupId string) (string, error)
 		}
 
 		taskList = append(taskList, fmt.Sprintf(
-			"-[%s] %s / %s / ครบกำหนด %s",
+			"- [%s]\n%s / ครบกำหนด %s",
 			task.Title,
 			assignedTo,
 			task.DueDate.Format("2006-01-02"),

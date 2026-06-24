@@ -40,10 +40,10 @@ func AddMemberToGroup(db *sql.DB, uid string, gid string) error {
 	defer cancel()
 
 	res, err := db.ExecContext(ctx, `
-        INSERT INTO line_group_members (line_group_id, line_user_id, joined_at)
-        SELECT g.id, u.id, now()
+        INSERT INTO line_group_members (line_group_id, line_user_id, joined_status, latest_update)
+        SELECT g.id, u.id, 'joined', now()
         FROM line_groups g
-        JOIN line_users u ON u.id = $1
+        JOIN line_users u ON u.line_user_id = $1
         WHERE g.line_group_id = $2
         ON CONFLICT (line_group_id, line_user_id) DO NOTHING
     `, uid, gid)

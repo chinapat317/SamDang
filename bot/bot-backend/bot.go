@@ -46,22 +46,22 @@ func EventController(events []*linebot.Event,
 			msg, ok := event.Message.(*linebot.TextMessage)
 			if ok {
 				if event.Source.Type == linebot.EventSourceTypeGroup {
-					if msg.Text == "@Samdang เพิ่มฉัน" {
+					if msg.Text == "@SamDang เพิ่มฉัน" {
 						AddGroupMember(event, db, bot, db_hmac)
 						return
 					}
-					if msg.Text == "@Samdang ลงทะเบียนกลุ่ม" {
+					if msg.Text == "@SamDang ลงทะเบียนกลุ่ม" {
 						RegisterGroup(event, db, bot)
 						return
 					}
-					if msg.Text == "@Samdang งานที่ดำเนินการในกลุ่ม" {
-						ListGroupTask(event, db, bot)
+					if msg.Text == "@SamDang งานที่ดำเนินการในกลุ่ม" {
+						ListGroupInProgressTasks(event, db, bot)
 						return
 					}
-				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@Samdang เพิ่ม admin") {
+				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม admin") {
 					AddRole(event, db, bot, db_hmac, "admin", "addAdmin")
 					return
-				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@Samdang เพิ่ม manager") {
+				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม manager") {
 					AddRole(event, db, bot, db_hmac, "manager", "addManager")
 					return
 				} else {
@@ -90,7 +90,7 @@ func BotLeaveGroup(event *linebot.Event,
 func RegisterGroup(event *linebot.Event,
 	db *sql.DB,
 	bot *linebot.Client) {
-	_, err := dbmanage.CheckUserRole(event.Source.UserID, db, "manager")
+	_, err := dbmanage.CheckUserRole(event.Source.UserID, db, []string{"manager", "admin"})
 	if err != nil {
 		err_mes := fmt.Sprintf("ผู้ใช้@%sไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท", event.Source.UserID)
 		_, _ = bot.ReplyMessage(
@@ -162,7 +162,7 @@ func AddGroupMember(event *linebot.Event,
 	err = dbmanage.AddMemberToGroup(db, uid, gid)
 	if err != nil {
 		log.Println("AddMemberToGroup error:", err)
-		err_mes := fmt.Sprintf("เพิ่ม@%sไม่สำเร็จ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
+		err_mes := fmt.Sprintf("คุณ%s มีชื่อในกลุ่มแล้วค่ะ", name)
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
@@ -247,7 +247,7 @@ func ListGroupInProgressTasks(event *linebot.Event, db *sql.DB, bot *linebot.Cli
 	groupId := event.Source.GroupID
 	response, err := BuildGroupInProgressTaskMessage(db, groupId)
 	if err != nil {
-		log.Printf("BuildGroupTaskMessage error: %s", err)
+		log.Printf("BuildGroupInProgressTaskMessage error: %s", err)
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage("ไม่สามารถดึงงานในกลุ่มได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา"),
@@ -273,7 +273,7 @@ func SendDailyGroupInProgressTasks(db *sql.DB, bot *linebot.Client) {
 		log.Printf("GetJoinedGroups error: %s", err)
 		return
 	}
-
+	log.Printf("Sending daily group task lists to %d groups", groups)
 	for _, group := range groups {
 		message, err := BuildGroupInProgressTaskMessage(db, group.LineGroupID)
 		if err != nil {

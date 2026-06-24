@@ -2,6 +2,8 @@ services:
   nginx:
     image: nginx:1.27-alpine
     container_name: gateway
+    environment:
+      TZ: Asia/Bangkok
     ports:
       - "3000:3000"
     volumes:

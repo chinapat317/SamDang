@@ -36,8 +36,9 @@ func AddUser(db *sql.DB,
 	return err
 }
 
-func CheckUserRole(uid string, db *sql.DB, role string) (bool, error) {
+func CheckUserRole(uid string, db *sql.DB, role []string) (bool, error) {
 	var user_role string
+	var is_match = false
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err := db.QueryRowContext(ctx, `
@@ -48,7 +49,13 @@ func CheckUserRole(uid string, db *sql.DB, role string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return user_role == role, nil
+	for _, each_role := range role {
+		if user_role == each_role {
+			is_match = true
+			break
+		}
+	}
+	return is_match, nil
 }
 
 func CheckCode(db *sql.DB, name string, code string) (bool, error) {

@@ -91,7 +91,7 @@ func startDailyTaskScheduler(db *sql.DB, bot *linebot.Client) {
 		time.Sleep(wait)
 
 		log.Println("Sending daily group task lists")
-		botbackend.SendDailyGroupTasks(db, bot)
+		botbackend.SendDailyGroupInProgressTasks(db, bot)
 	}
 }
 

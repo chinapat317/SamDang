@@ -7,19 +7,19 @@ FROM (
     (
       'Dummy task 1',
       'Prepare project kickoff notes',
-      'in_progress',
+      'in progress',
       now() + interval '2 days'
     ),
     (
       'Dummy task 2',
       'Review group member list',
-      'in_progress',
+      'in progress',
       now() + interval '4 days'
     ),
     (
       'Dummy task 3',
       'Draft notification message',
-      'in_progress',
+      'in progress',
       now() + interval '6 days'
     ),
     (
