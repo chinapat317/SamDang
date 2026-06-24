@@ -1,7 +1,7 @@
 import { GroupInfo, Users } from "@/types/types";
 
-export async function GetGroupInfo(gid: string) {
-  const res = await fetch("/front-api/api/post/ginfo", {
+export async function GetGroupInfo(gid: string): Promise<GroupInfo> {
+  const res = await fetch("/front-api/post/ginfo", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ gid }),
@@ -13,15 +13,26 @@ export async function GetGroupInfo(gid: string) {
   const data = await res.json();
   if (data && typeof data === "object") {
     console.log("GetGroupInfo response:", data);
-    return data
+    return data;
   }
   throw new Error("Invalid response format from backend");
 }
 
 export function MemberList(groupMemJson: unknown): Users[] {
-  const members = (groupMemJson as GroupInfo).group_members;
+  if (!groupMemJson || typeof groupMemJson !== "object") {
+    return [];
+  }
+
+  const groupInfo = groupMemJson as Partial<GroupInfo> & {
+    members?: Users[] | Record<string, Users>;
+  };
+  const members = groupInfo.group_members ?? groupInfo.members;
+
   if (Array.isArray(members)) {
     return members;
+  }
+  if (members && typeof members === "object") {
+    return Object.values(members);
   }
   return [];
 }
@@ -32,14 +43,25 @@ export function GetSelectedPic(groupMemJson: unknown, selectedName: string): str
   return member ? member.picture_url : "";
 }
 
-export async function CheckUserInGroup(uid: string, gid: string): Promise<boolean> {
-    const res = await fetch("/front-api/api/post/check_user_in_group", {
+export async function GetMyGroups(uid: string): Promise<GroupInfo[]> {  
+    const res = await fetch("/front-api/post/my_groups", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ uid, gid })
+        body: JSON.stringify({ uid })
     });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`GetMyGroups failed ${res.status}: ${text}`);
+    }
     const data = await res.json();
-    return data.is_in_group === true;
-}
+    console.log("GetMyGroups response:", data);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    if (data && typeof data === "object" && Array.isArray(data.groups)) {
+      return data.groups;
+    }
+    throw new Error("Invalid response format from backend");
+  }

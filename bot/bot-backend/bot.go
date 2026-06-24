@@ -46,6 +46,7 @@ func EventController(events []*linebot.Event,
 			msg, ok := event.Message.(*linebot.TextMessage)
 			if ok {
 				if event.Source.Type == linebot.EventSourceTypeGroup {
+					log.Printf("LINE webhook group id: %s", event.Source.GroupID)
 					if msg.Text == "@SamDang เพิ่มฉัน" {
 						AddGroupMember(event, db, bot, db_hmac)
 						return

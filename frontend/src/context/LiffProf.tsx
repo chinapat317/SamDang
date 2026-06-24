@@ -1,15 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useMemo, useState } from "react";
-
-export type LiffProf = {
-  uid: string;
-  groupId: string;
-  displayName: string;
-  pictureUrl: string;
-  liff_loading: boolean;
-  error: string | null;
-};
+import { LiffProf } from "@/types/types";
 
 const LiffProfCtx = createContext<LiffProf | null>(null);
 const SetLiffProfCtx = createContext<React.Dispatch<React.SetStateAction<LiffProf>> | null>(null);
@@ -17,7 +9,6 @@ const SetLiffProfCtx = createContext<React.Dispatch<React.SetStateAction<LiffPro
 export function LiffProfProvider({ children }: { children: React.ReactNode }) {
   const [prof, setProf] = useState<LiffProf>({
     uid: "",
-    groupId: "",
     displayName: "",
     pictureUrl: "",
     liff_loading: true,

@@ -46,7 +46,10 @@ func main() {
 	{
 		postGroup.POST("/prof", api.ProfHandler(db))
 		postGroup.POST("/ginfo", api.GroupInfoHandler(db))
+		postGroup.POST("/my_groups", api.MyGroupsHandler(db))
 		postGroup.POST("/task/assign", api.TaskAssignHandler(db))
+		postGroup.POST("/tasks/edit/group", api.EditGroupShow(db))
+		postGroup.POST("/tasks/edit/confirm", api.EditGroupConfirm(db))
 	}
 
 	port := os.Getenv("FRONT_HANDLER_PORT")

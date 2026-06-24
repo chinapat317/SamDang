@@ -9,16 +9,11 @@ type LiffProfile = {
   pictureUrl?: string;
 };
 
-type LiffContext = {
-  groupId?: string;
-};
-
 type LiffSdk = {
   init: (options: { liffId: string }) => Promise<void>;
   isLoggedIn: () => boolean;
   login: () => void;
   getProfile: () => Promise<LiffProfile>;
-  getContext: () => LiffContext | null;
 };
 
 type LiffWindow = Window & {
@@ -65,10 +60,8 @@ export default function LiffBootstrap() {
         }
 
         const profile = await liff.getProfile();
-        const ctx = liff.getContext();
 
         const uid = String(profile.userId || "");
-        const groupId = String(ctx?.groupId || "");
         const displayName = String(profile.displayName || "");
         const pictureUrl = String(profile.pictureUrl || "");
 
@@ -76,7 +69,6 @@ export default function LiffBootstrap() {
 
         setProf({
           uid,
-          groupId,
           displayName,
           pictureUrl,
           liff_loading: false,

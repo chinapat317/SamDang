@@ -1,12 +1,15 @@
 "use client";
 
-import { GetGroupInfo,
+import {
+  GetGroupInfo,
   GetSelectedPic,
   MemberList,
-  CheckUserInGroup } from "@/commonFunc/group";
+} from "@/commonFunc/group";
 import { useLiffProf } from "@/context/LiffProf";
-import { LiffProfile, TaskRow } from "@/types/types";
-import { useEffect, useState } from "react";
+import { useMyGroup } from "@/context/MyGroup";
+import { GroupInfo, LiffProf, TaskRow } from "@/types/types";
+import { useRouter } from "next/navigation";
+import { ReactNode, useEffect, useState } from "react";
 import {
   addTaskRow,
   assignTasks,
@@ -15,36 +18,59 @@ import {
   updateTaskRow,
 } from "./funcs";
 
+function navigateInFrontend(router: { push: (path: string) => void }, path: string) {
+  const isFrontPath =
+    window.location.pathname === "/front" || window.location.pathname.startsWith("/front/");
+  if (isFrontPath) {
+    window.location.assign(`/front${path}`);
+    return;
+  }
+  router.push(path);
+}
+
 export default function AddWork() {
-  const { uid, groupId, liff_loading, displayName } = useLiffProf() as LiffProfile;
+  const router = useRouter();
+  const { uid, liff_loading, displayName } = useLiffProf() as LiffProf;
+  const { selectedGroup, setSelectedGroup } = useMyGroup();
   const currentUserName = displayName || uid || "Unknown";
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [assignStatus, setAssignStatus] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
-  const [groupMemJson, setGroupMemJson] = useState<unknown>(null);
-  const [groupNameJson, setGroupNameJson] = useState<unknown>(null);
+  const [groupMemJson, setGroupMemJson] = useState<unknown>(selectedGroup);
+  const [groupNameJson, setGroupNameJson] = useState<unknown>(
+    selectedGroup?.group_name ?? selectedGroup?.line_group_name ?? null,
+  );
   const [loading, setLoading] = useState(false);
+  const [groupDataLoaded, setGroupDataLoaded] = useState(Boolean(selectedGroup));
   const [errMsg, setErrMsg] = useState<string | null>(null);
-  const [isUserInGroup, setIsUserInGroup] = useState(false);
+  const [selectedGroupFromUrl] = useState(() => {
+    if (typeof window === "undefined") {
+      return { id: "", name: null as string | null };
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    return { id: params.get("gid") || "", name: null as string | null };
+  });
+
+  const activeGroupId = selectedGroup?.group_id || selectedGroupFromUrl.id || "";
 
   useEffect(() => {
-    if (!groupId || !uid) return;
+    if (!activeGroupId || !uid) return;
+    if (selectedGroup?.group_id === activeGroupId && MemberList(selectedGroup).length > 0) return;
 
-    const activeGroupId = groupId;
-    const activeUid = uid;
-    
     let cancelled = false;
 
     async function load() {
       try {
         setLoading(true);
+        setGroupDataLoaded(false);
         setErrMsg(null);
-        const userInGroup = await CheckUserInGroup(activeUid, activeGroupId);
         const groupInfo = await GetGroupInfo(activeGroupId);
         if (!cancelled) {
-          setIsUserInGroup(userInGroup);
-          setGroupMemJson(groupInfo.group_members);
-          setGroupNameJson(groupInfo.group_name);
+          setGroupMemJson(groupInfo);
+          setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
+          setSelectedGroup(normalizeSelectedGroup(activeGroupId, groupInfo));
+          setGroupDataLoaded(true);
         }
       } catch (e: unknown) {
         if (!cancelled) setErrMsg(e instanceof Error ? e.message : "failed");
@@ -57,31 +83,25 @@ export default function AddWork() {
     return () => {
       cancelled = true;
     };
-  }, [groupId, uid]);
+  }, [activeGroupId, selectedGroup, setSelectedGroup, uid]);
 
-  if (!groupId && !liff_loading) {
-    if (!isUserInGroup) {
-      return (
-        <div className="taskEmpty">
-          กรุณาลงทะเบียนสมาชิกกลุ่มก่อนแล้วลองอีกครั้ง
-        </div>
-      );
-    }
-    if (groupNameJson === "Unknown Group") {
-      return (
-        <div className="taskEmpty">
-          ไม่พบกลุ่ม กรุณาตรวจสอบว่ากลุ่มได้รับการลงทะเบียนแล้ว
-        </div>
-      );
-    }
-    return (
-      <div className="taskEmpty">
-        กรุณาเปิดจากภายในแชทกลุ่มที่ได้รับการลงทะเบียนแล้ว
-      </div>
-    );
+  if (liff_loading || (!!activeGroupId && !!uid && (loading || !groupDataLoaded))) {
+    return <LoadingScreen />;
   }
 
-  const groupName = typeof groupNameJson === "string" && groupNameJson ? groupNameJson : "Group";
+  if (errMsg) {
+    return <PageMessage>{errMsg}</PageMessage>;
+  }
+
+  if (!uid) {
+    return <PageMessage>Cannot load LINE profile. Please open this page from LINE LIFF again.</PageMessage>;
+  }
+
+  const groupName =
+    (typeof groupNameJson === "string" && groupNameJson) ||
+    selectedGroup?.group_name ||
+    selectedGroup?.line_group_name ||
+    "Group";
 
   return (
     <main className="taskPage">
@@ -95,6 +115,7 @@ export default function AddWork() {
           <div>assigned to</div>
           <div>assigned by</div>
           <div>task</div>
+          <div>description</div>
           <div>assign date</div>
           <div>due date</div>
           <div className="alignRight">action</div>
@@ -149,6 +170,19 @@ export default function AddWork() {
                 />
               </div>
 
+              <div className="taskCell descriptionCell">
+                <span className="mobileLabel">description</span>
+                <textarea
+                  value={r.description}
+                  onChange={(e) =>
+                    updateTaskRow(setTaskRows, r.id, { description: e.target.value })
+                  }
+                  placeholder="Type description..."
+                  className="field textareaField"
+                  aria-label={`Row ${index + 1} description`}
+                />
+              </div>
+
               <div className="taskCell">
                 <span className="mobileLabel">assign date</span>
                 <div className="readonlyField" title={r.assignDateISO}>
@@ -193,15 +227,18 @@ export default function AddWork() {
 
         <button
           type="button"
-          onClick={() =>
-            assignTasks({
-              groupId,
+          onClick={async () => {
+            const assigned = await assignTasks({
+              groupId: activeGroupId,
               taskRows,
               currentUserName,
               setAssignStatus,
               setAssigning,
-            })
-          }
+            });
+            if (assigned) {
+              navigateInFrontend(router, "/tasks?assigned=1");
+            }
+          }}
           disabled={assigning}
           className="primaryButton"
         >
@@ -258,8 +295,9 @@ export default function AddWork() {
         .taskGrid {
           display: grid;
           grid-template-columns:
-            minmax(150px, 1.4fr) minmax(130px, 1.2fr) minmax(190px, 2.2fr)
-            minmax(140px, 1.2fr) minmax(130px, 1.2fr) minmax(96px, 0.7fr);
+            minmax(140px, 1.2fr) minmax(120px, 1fr) minmax(160px, 1.5fr)
+            minmax(180px, 1.7fr) minmax(130px, 1fr) minmax(120px, 1fr)
+            minmax(90px, 0.7fr);
           align-items: center;
         }
 
@@ -314,6 +352,12 @@ export default function AddWork() {
         .field {
           border: 1px solid #ddd;
           background: white;
+        }
+
+        .textareaField {
+          min-height: 72px;
+          resize: vertical;
+          line-height: 1.4;
         }
 
         .readonlyField {
@@ -465,5 +509,50 @@ export default function AddWork() {
         }
       `}</style>
     </main>
+  );
+}
+
+function normalizeSelectedGroup(groupId: string, groupInfo: GroupInfo): GroupInfo {
+  return {
+    ...groupInfo,
+    group_id: groupInfo.group_id || groupId,
+    group_name: groupInfo.group_name || groupInfo.line_group_name,
+  };
+}
+
+function LoadingScreen() {
+  return (
+    <div
+      style={{
+        minHeight: "60vh",
+        display: "grid",
+        placeItems: "center",
+        padding: 24,
+        boxSizing: "border-box",
+      }}
+    >
+      <div style={{ textAlign: "center", lineHeight: 1.5 }}>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Loading...</div>
+        <div style={{ fontSize: 13, opacity: 0.72 }}>Preparing group task data</div>
+      </div>
+    </div>
+  );
+}
+
+function PageMessage({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        maxWidth: 720,
+        margin: "32px auto",
+        padding: "0 12px",
+        boxSizing: "border-box",
+        lineHeight: 1.5,
+        textAlign: "center",
+      }}
+    >
+      {children}
+    </div>
   );
 }

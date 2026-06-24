@@ -1,5 +1,6 @@
 import TopBar from "@/components/TopBar";
 import { LiffProfProvider } from "@/context/LiffProf";
+import { MyGroupProvider } from "@/context/MyGroup";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,18 +17,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         }}
       >
         <LiffProfProvider>
-          <TopBar title="SamDang" />
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 1180,
-              margin: "0 auto",
-              padding: "clamp(12px, 3vw, 20px)",
-              boxSizing: "border-box",
-            }}
-          >
-            {children}
-          </div>
+          <MyGroupProvider>
+            <TopBar title="SamDang" />
+            <div
+              style={{
+                width: "100%",
+                maxWidth: 1180,
+                margin: "0 auto",
+                padding: "clamp(12px, 3vw, 20px)",
+                boxSizing: "border-box",
+              }}
+            >
+              {children}
+            </div>
+          </MyGroupProvider>
         </LiffProfProvider>
       </body>
     </html>

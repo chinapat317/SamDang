@@ -18,7 +18,8 @@ export type AssignPayload = {
   tasks: Array<{
     assignedTo: string;
     assignedBy: string;
-    task: string;
+    title: string;
+    description: string;
     assignDate: string; // ISO
     dueDate: string; // yyyy-mm-dd
   }>;
@@ -28,7 +29,8 @@ export type AssignPayloadItem = {
   group_id: string;
   assigned_to_line_display_name: string;
   assigned_by_line_display_name: string;
-  task: string;
+  title: string;
+  description: string;
   assign_date: string;
   due_date: string;
 };
@@ -47,6 +49,7 @@ export function createTaskRow(): TaskRow {
     id: crypto.randomUUID(),
     assignedToName: "",
     task: "",
+    description: "",
     assignDateISO: nowISO(),
     dueDate: "",
   };
@@ -77,15 +80,15 @@ export async function assignTasks({
   currentUserName,
   setAssignStatus,
   setAssigning,
-}: AssignTasksParams) {
+}: AssignTasksParams): Promise<boolean> {
   setAssignStatus(null);
   if (!groupId) {
     setAssignStatus("No groupId. Please open from inside group.");
-    return;
+    return false;
   }
   if (taskRows.length === 0) {
     setAssignStatus("No tasks.");
-    return;
+    return false;
   }
 
   for (let i = 0; i < taskRows.length; i++) {
@@ -93,15 +96,15 @@ export async function assignTasks({
 
     if (!r.assignedToName || r.assignedToName.trim() === "") {
       setAssignStatus(`Row ${i + 1}: please select "assigned to"`);
-      return;
+      return false;
     }
     if (!r.task || r.task.trim() === "") {
       setAssignStatus(`Row ${i + 1}: task cannot be empty`);
-      return;
+      return false;
     }
     if (!r.dueDate || r.dueDate.trim() === "") {
       setAssignStatus(`Row ${i + 1}: please select "due date"`);
-      return;
+      return false;
     }
   }
 
@@ -111,7 +114,8 @@ export async function assignTasks({
       group_id: groupId,
       assigned_to_line_display_name: r.assignedToName,
       assigned_by_line_display_name: currentUserName,
-      task: r.task,
+      title: r.task,
+      description: r.description,
       assign_date: r.assignDateISO,
       due_date: r.dueDate,
     };
@@ -128,12 +132,14 @@ export async function assignTasks({
     const text = await res.text();
     if (!res.ok) {
       setAssignStatus(`Error ${res.status}: ${text}`);
-      return;
+      return false;
     }
     setAssignStatus("Assigned");
     console.log("assign payload:", payload);
+    return true;
   } catch (e: unknown) {
     setAssignStatus(getErrorMessage(e, "Assign failed"));
+    return false;
   } finally {
     setAssigning(false);
   }
