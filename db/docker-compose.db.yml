@@ -4,8 +4,10 @@ services:
     container_name: db
     env_file:
       - ../.env
-    ports:
-      - "5432:5432"
+    expose:
+      - "5432"
+    networks:
+      - samdang
     environment:
       TZ: Asia/Bangkok
       PGTZ: Asia/Bangkok
@@ -20,3 +22,8 @@ services:
 
 volumes:
   samdang-data:
+
+networks:
+  samdang:
+    external: true
+    name: samdang

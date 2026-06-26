@@ -1,0 +1,20 @@
+services:
+  frontend:
+    image: jojoboy1997/linebot-frontend:latest
+    container_name: samdang-frontend
+    env_file:
+      - ../.env
+    environment:
+      TZ: Asia/Bangkok
+      PORT: 8081
+      FRONT_HANDLER_INTERNAL_URL: http://samdang-front-handler:8082
+    expose:
+      - "8081"
+    networks:
+      - samdang
+    restart: unless-stopped
+
+networks:
+  samdang:
+    external: true
+    name: samdang

@@ -1,0 +1,24 @@
+services:
+  bot:
+    build:
+      context: .
+    container_name: samdang-bot
+    env_file:
+      - ../.env
+    environment:
+      TZ: Asia/Bangkok
+      PORT: 8080
+    command:
+      - /bin/sh
+      - -c
+      - DB_URL="postgres://$${POSTGRES_USER}:$${POSTGRES_PASSWORD}@db:5432/$${POSTGRES_DB}?sslmode=disable" /app/samdang-bot
+    expose:
+      - "8080"
+    networks:
+      - samdang
+    restart: unless-stopped
+
+networks:
+  samdang:
+    external: true
+    name: samdang
