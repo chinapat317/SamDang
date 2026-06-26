@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: samdang-db
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Bangkok
+      PGTZ: Asia/Bangkok
+    volumes:
+      - samdang-db-data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: ./bot
+    container_name: samdang-bot
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Bangkok
+      PORT: 8080
+      DB_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+    restart: unless-stopped
+
+  frontHandler:
+    build:
+      context: ./frontHandler
+    container_name: samdang-front-handler
+    env_file:
+      - .env
+    environment:
+      TZ: Asia/Bangkok
+      FRONT_HANDLER_PORT: 8082
+      DB_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8082"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_LINE_LIFF_ID: ${NEXT_PUBLIC_LINE_LIFF_ID:-2010065177-SzAPAK72}
+    container_name: samdang-frontend
+    environment:
+      TZ: Asia/Bangkok
+      PORT: 8081
+      FRONT_HANDLER_INTERNAL_URL: http://frontHandler:8082
+    depends_on:
+      - frontHandler
+    expose:
+      - "8081"
+    restart: unless-stopped
+
+volumes:
+  samdang-db-data:

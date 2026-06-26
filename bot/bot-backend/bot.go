@@ -45,32 +45,27 @@ func EventController(events []*linebot.Event,
 		if event.Type == linebot.EventTypeMessage {
 			msg, ok := event.Message.(*linebot.TextMessage)
 			if ok {
-				if event.Source.Type == linebot.EventSourceTypeGroup {
-					log.Printf("LINE webhook group id: %s", event.Source.GroupID)
-					if msg.Text == "@SamDang เพิ่มฉัน" {
-						AddGroupMember(event, db, bot, db_hmac)
-						return
+				if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang") {
+					if event.Source.Type == linebot.EventSourceTypeGroup {
+						log.Printf("LINE webhook group id: %s", event.Source.GroupID)
+						if msg.Text == "@SamDang เพิ่มฉัน" {
+							AddGroupMember(event, db, bot, db_hmac)
+						} else if msg.Text == "@SamDang ลงทะเบียนกลุ่ม" {
+							RegisterGroup(event, db, bot)
+						} else if msg.Text == "@SamDang งานที่ดำเนินการในกลุ่ม" {
+							ListGroupInProgressTasks(event, db, bot)
+						}
+					} else if event.Source.Type == linebot.EventSourceTypeUser {
+						if msg.Text == "@SamDang รหัส admin" {
+							GetAdminCode(event, db, bot)
+						} else if msg.Text == "@SamDang รหัส manager" {
+							GetManagerCode(event, db, bot)
+						} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม admin") {
+							AddRole(event, db, bot, db_hmac, "admin", "addAdmin")
+						} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม manager") {
+							AddRole(event, db, bot, db_hmac, "manager", "addManager")
+						}
 					}
-					if msg.Text == "@SamDang ลงทะเบียนกลุ่ม" {
-						RegisterGroup(event, db, bot)
-						return
-					}
-					if msg.Text == "@SamDang งานที่ดำเนินการในกลุ่ม" {
-						ListGroupInProgressTasks(event, db, bot)
-						return
-					}
-				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม admin") {
-					AddRole(event, db, bot, db_hmac, "admin", "addAdmin")
-					return
-				} else if strings.HasPrefix(strings.TrimSpace(msg.Text), "@SamDang เพิ่ม manager") {
-					AddRole(event, db, bot, db_hmac, "manager", "addManager")
-					return
-				} else {
-					err_mes := fmt.Sprintf("ผู้ใช้ไม่ได้อยู่ในกลุ่มไลน์ กรุณากดลงทะเบียนเฉพาะตอนอยู่ในกลุ่มไลน์", event.Source.UserID)
-					_, _ = bot.ReplyMessage(
-						event.ReplyToken,
-						linebot.NewTextMessage(err_mes),
-					).Do()
 				}
 			}
 		} else {
@@ -93,7 +88,7 @@ func RegisterGroup(event *linebot.Event,
 	bot *linebot.Client) {
 	_, err := dbmanage.CheckUserRole(event.Source.UserID, db, []string{"manager", "admin"})
 	if err != nil {
-		err_mes := fmt.Sprintf("ผู้ใช้@%sไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท", event.Source.UserID)
+		err_mes := fmt.Sprintf("ผู้ใช้ไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท", event.Source.UserID)
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
@@ -113,7 +108,7 @@ func RegisterGroup(event *linebot.Event,
 	err = dbmanage.GroupRegister(db, event.Source.GroupID, gname)
 	if err != nil {
 		log.Printf("GroupRegister error: %s", err)
-		err_mes := fmt.Sprintf("ไม่สามารถลงทะเบียนกลุ่มได้ เนื่องจาก group sql errorกรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา", event.Source.UserID)
+		err_mes := fmt.Sprintf("ไม่สามารถลงทะเบียนกลุ่มได้ เนื่องจาก group sql errorกรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา")
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
@@ -141,7 +136,7 @@ func AddGroupMember(event *linebot.Event,
 	prof, err := bot.GetProfile(uid).Do()
 	if err != nil {
 		log.Printf("GetProfile error: %s", err)
-		err_mes := fmt.Sprintf("ไม่สามารถค้นหาข้อมูลผู้ใช้ด้วยไลน์ api ได้ กรุณาลองอีกครั้งหรือแจ้งผู้พัฒนา")
+		err_mes := fmt.Sprintf("ไม่สามารถค้นหาข้อมูลผู้ใช้ด้วยไลน์ api ได้ กรุณาลองอีกครั้งหลังเพิ่มพื่อนกับ SamDang ค่ะ")
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
@@ -163,14 +158,14 @@ func AddGroupMember(event *linebot.Event,
 	err = dbmanage.AddMemberToGroup(db, uid, gid)
 	if err != nil {
 		log.Println("AddMemberToGroup error:", err)
-		err_mes := fmt.Sprintf("คุณ%s มีชื่อในกลุ่มแล้วค่ะ", name)
+		err_mes := fmt.Sprintf("ไม่พบกลุ่มที่ลงทะเบียนไว้ หรือ คุณ%sอาจลงทะเบียนกับกลุ่มนี้ไปแล้วค่ะ", name)
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
 		).Do()
 	}
 	log.Printf("regis successfully")
-	msg := fmt.Sprintf("เพิ่มคุณ@%sลงในกลุ่มเรียบร้อยค่ะ", name)
+	msg := fmt.Sprintf("เพิ่มคุณ%sลงในกลุ่มเรียบร้อยค่ะ", name)
 	_, _ = bot.ReplyMessage(
 		event.ReplyToken,
 		linebot.NewTextMessage(msg),
@@ -288,4 +283,64 @@ func SendDailyGroupInProgressTasks(db *sql.DB, bot *linebot.Client) {
 			log.Printf("Push daily task list error for group %s: %s", group.LineGroupID, err)
 		}
 	}
+}
+
+func GetAdminCode(event *linebot.Event, db *sql.DB, bot *linebot.Client) {
+	if !canGetAdminCode(event, db, bot) {
+		return
+	}
+
+	code, err := dbmanage.GetAdminCode(db, "addAdmin")
+	if err != nil {
+		log.Printf("GetAdminCode error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("Cannot get admin code. Please try again."),
+		).Do()
+		return
+	}
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(fmt.Sprintf("admin code: %s", code)),
+	).Do()
+}
+
+func GetManagerCode(event *linebot.Event, db *sql.DB, bot *linebot.Client) {
+	if !canGetAdminCode(event, db, bot) {
+		return
+	}
+
+	code, err := dbmanage.GetAdminCode(db, "addManager")
+	if err != nil {
+		log.Printf("GetManagerCode error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("Cannot get manager code. Please try again."),
+		).Do()
+		return
+	}
+	_, _ = bot.ReplyMessage(
+		event.ReplyToken,
+		linebot.NewTextMessage(fmt.Sprintf("manager code: %s", code)),
+	).Do()
+}
+
+func canGetAdminCode(event *linebot.Event, db *sql.DB, bot *linebot.Client) bool {
+	ok, err := dbmanage.CheckUserRole(event.Source.UserID, db, []string{"admin"})
+	if err != nil {
+		log.Printf("CheckUserRole error: %s", err)
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("Cannot check user role. Please try again."),
+		).Do()
+		return false
+	}
+	if !ok {
+		_, _ = bot.ReplyMessage(
+			event.ReplyToken,
+			linebot.NewTextMessage("Only admin can use this command."),
+		).Do()
+		return false
+	}
+	return true
 }

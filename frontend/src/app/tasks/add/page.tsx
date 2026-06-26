@@ -28,6 +28,10 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
   router.push(path);
 }
 
+function addDraftKey(uid: string, groupId: string) {
+  return `samdang.tasks.add.${uid}.${groupId}`;
+}
+
 export default function AddWork() {
   const router = useRouter();
   const { uid, liff_loading, displayName } = useLiffProf() as LiffProf;
@@ -42,6 +46,7 @@ export default function AddWork() {
   );
   const [loading, setLoading] = useState(false);
   const [groupDataLoaded, setGroupDataLoaded] = useState(Boolean(selectedGroup));
+  const [loadedDraftKey, setLoadedDraftKey] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [selectedGroupFromUrl] = useState(() => {
     if (typeof window === "undefined") {
@@ -53,6 +58,41 @@ export default function AddWork() {
   });
 
   const activeGroupId = selectedGroup?.group_id || selectedGroupFromUrl.id || "";
+
+  useEffect(() => {
+    if (!uid || !activeGroupId) return;
+
+    const timer = window.setTimeout(() => {
+      const key = addDraftKey(uid, activeGroupId);
+      const savedDraft = window.localStorage.getItem(key);
+      if (!savedDraft) {
+        setLoadedDraftKey(key);
+        return;
+      }
+
+      try {
+        const savedRows = JSON.parse(savedDraft);
+        if (Array.isArray(savedRows)) {
+          setTaskRows(savedRows);
+        }
+      } catch {
+        window.localStorage.removeItem(key);
+      } finally {
+        setLoadedDraftKey(key);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [activeGroupId, uid]);
+
+  useEffect(() => {
+    if (!uid || !activeGroupId) return;
+
+    const key = addDraftKey(uid, activeGroupId);
+    if (loadedDraftKey !== key) return;
+
+    window.localStorage.setItem(key, JSON.stringify(taskRows));
+  }, [activeGroupId, loadedDraftKey, taskRows, uid]);
 
   useEffect(() => {
     if (!activeGroupId || !uid) return;
@@ -236,6 +276,7 @@ export default function AddWork() {
               setAssigning,
             });
             if (assigned) {
+              window.localStorage.removeItem(addDraftKey(uid, activeGroupId));
               navigateInFrontend(router, "/tasks?assigned=1");
             }
           }}

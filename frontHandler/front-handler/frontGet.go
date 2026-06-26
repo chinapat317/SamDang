@@ -212,6 +212,32 @@ func EditGroupShow(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
+func ShowGroupTasks(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UserGroupReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "ShowGroupTasks: invalid json body")
+			return
+		}
+
+		uid := strings.TrimSpace(req.UID)
+		gid := strings.TrimSpace(req.GID)
+		if uid == "" || gid == "" {
+			c.String(http.StatusBadRequest, "ShowGroupTasks: uid and gid are required")
+			return
+		}
+
+		groupTasks, err := dbmanage.MyGroupTasks(db, uid, gid)
+		if err != nil {
+			log.Printf("ShowGroupTasks: failed to get tasks: %v\n", err)
+			c.String(http.StatusInternalServerError, "ShowGroupTasks: failed to get tasks")
+			return
+		}
+
+		c.JSON(http.StatusOK, MyGroupTasksResp(groupTasks))
+	}
+}
+
 func EditGroupConfirm(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req TaskEditRequest
@@ -231,7 +257,7 @@ func EditGroupConfirm(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		if err := dbmanage.UpdateMyGroupTasks(db, req.Tasks); err != nil {
+		if err := dbmanage.UpdateMyGroupTasks(db, uid, gid, req.Tasks); err != nil {
 			log.Printf("EditGroupConfirm: failed to update tasks: %v\n", err)
 			c.String(http.StatusInternalServerError, "EditGroupConfirm: failed to update tasks")
 			return

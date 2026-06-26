@@ -20,7 +20,7 @@ func GetGroupTasks(db *sql.DB, gid string) ([]GroupTask, error) {
 		LEFT JOIN line_users u ON u.id = t.assigned_to
 		LEFT JOIN line_group_members gm ON gm.line_user_id = t.assigned_to
 		LEFT JOIN line_groups g ON g.id = gm.line_group_id
-		WHERE g.line_group_id = $1 AND t.status = 'in progress'
+		WHERE g.line_group_id = $1 AND t.status = 'in progress' AND g.id = t.assigned_group 
 		ORDER BY
 			t.due_date ASC,
 			t.id ASC

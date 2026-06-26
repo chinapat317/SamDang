@@ -22,6 +22,28 @@ export async function GetMyGroupTasks(uid: string, gid: string): Promise<TaskCan
   throw new Error("Invalid response format from backend");
 }
 
+export async function GetMyGroupShowTasks(uid: string, gid: string): Promise<TaskCanEditItem[]> {
+  const res = await fetch("/front-api/post/tasks/show/group", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ uid, gid }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GetMyGroupShowTasks failed ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  throw new Error("Invalid response format from backend");
+}
+
 export async function ConfirmMyGroupTasks(
   uid: string,
   gid: string,

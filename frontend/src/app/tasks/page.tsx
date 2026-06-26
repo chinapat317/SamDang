@@ -23,10 +23,11 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
 
 export default function TasksPage() {
   const router = useRouter();
-  const { uid, liff_loading } = useLiffProf();
+  const { uid, liff_loading, error: liffError } = useLiffProf();
   const { groups, setGroups, setSelectedGroup } = useMyGroup();
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [openingShowPage, setOpeningShowPage] = useState(false);
   const [openingAddPage, setOpeningAddPage] = useState(false);
   const [openingEditPage, setOpeningEditPage] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -34,6 +35,10 @@ export default function TasksPage() {
   const [showAssignedPopup, setShowAssignedPopup] = useState(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("assigned") === "1";
+  });
+  const [showEditedPopup, setShowEditedPopup] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("edited") === "1";
   });
 
   const selectedGroup = useMemo(
@@ -106,6 +111,19 @@ export default function TasksPage() {
     }
   }
 
+  async function goShowTask() {
+    try {
+      setOpeningShowPage(true);
+      const ready = await prepareSelectedGroup();
+      if (!ready || !selectedGroup) return;
+      navigateInFrontend(router, `/tasks/show?gid=${encodeURIComponent(selectedGroup.group_id)}`);
+    } catch (e: unknown) {
+      setErrMsg(e instanceof Error ? e.message : "Failed to open show task page");
+    } finally {
+      setOpeningShowPage(false);
+    }
+  }
+
   async function goEditTask() {
     try {
       setOpeningEditPage(true);
@@ -123,8 +141,17 @@ export default function TasksPage() {
     return <PageMessage title="Loading..." detail="Preparing your groups" />;
   }
 
+  if (liffError) {
+    return <PageMessage title="Failed to authenticate" detail={liffError} />;
+  }
+
   if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+    return (
+      <PageMessage
+        title="Failed to authenticate"
+        detail="Please open this page from LINE LIFF again."
+      />
+    );
   }
 
   if (errMsg) {
@@ -147,6 +174,13 @@ export default function TasksPage() {
     window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
   }
 
+  function closeEditedPopup() {
+    setShowEditedPopup(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("edited");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }
+
   return (
     <main className="tasksPage">
       <section className="groupPicker" aria-label="Select group">
@@ -156,6 +190,14 @@ export default function TasksPage() {
             <p>Select a group before adding tasks.</p>
           </div>
           <div className="headerActions">
+            <button
+              type="button"
+              className="secondaryButton"
+              disabled={openingShowPage}
+              onClick={goShowTask}
+            >
+              {openingShowPage ? "Opening..." : "Show"}
+            </button>
             <button
               type="button"
               className="primaryButton"
@@ -202,6 +244,19 @@ export default function TasksPage() {
               Assigned
             </div>
             <button type="button" className="modalButton" onClick={closeAssignedPopup}>
+              OK
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {showEditedPopup ? (
+        <div className="modalBackdrop" role="presentation">
+          <div className="modalBox" role="dialog" aria-modal="true" aria-labelledby="edited-title">
+            <div id="edited-title" className="modalTitle">
+              Success edit task
+            </div>
+            <button type="button" className="modalButton" onClick={closeEditedPopup}>
               OK
             </button>
           </div>
@@ -378,7 +433,7 @@ export default function TasksPage() {
           .headerActions {
             width: 100%;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
 
           .secondaryButton,

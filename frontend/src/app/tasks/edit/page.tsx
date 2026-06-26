@@ -1,27 +1,52 @@
 "use client";
 
+import { GetGroupInfo } from "@/commonFunc/group";
 import { ConfirmMyGroupTasks, GetMyGroupTasks } from "@/commonFunc/task";
 import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
 import { LiffProf, TaskCanEditItem } from "@/types/types";
+import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
+function navigateInFrontend(router: { push: (path: string) => void }, path: string) {
+  const isFrontPath =
+    window.location.pathname === "/front" || window.location.pathname.startsWith("/front/");
+  if (isFrontPath) {
+    window.location.assign(`/front${path}`);
+    return;
+  }
+  router.push(path);
+}
+
+function editDraftKey(uid: string, groupId: string) {
+  return `samdang.tasks.edit.${uid}.${groupId}`;
+}
+
 export default function EditTasksPage() {
+  const router = useRouter();
   const { uid, liff_loading } = useLiffProf() as LiffProf;
   const { selectedGroup } = useMyGroup();
   const [tasks, setTasks] = useState<TaskCanEditItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadedDraftKey, setLoadedDraftKey] = useState("");
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [confirmStatus, setConfirmStatus] = useState<string | null>(null);
+  const [groupNameJson, setGroupNameJson] = useState<unknown>(
+    selectedGroup?.group_name ?? selectedGroup?.line_group_name ?? null,
+  );
   const [selectedGroupFromUrl] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("gid") || "";
   });
 
   const activeGroupId = selectedGroup?.group_id || selectedGroupFromUrl;
-  const groupName = selectedGroup?.group_name || selectedGroup?.line_group_name || "Group";
+  const groupName =
+    (typeof groupNameJson === "string" && groupNameJson) ||
+    selectedGroup?.group_name ||
+    selectedGroup?.line_group_name ||
+    "Group";
 
   useEffect(() => {
     if (!uid || !activeGroupId) return;
@@ -34,8 +59,29 @@ export default function EditTasksPage() {
         setLoaded(false);
         setErrMsg(null);
         const myTasks = await GetMyGroupTasks(uid, activeGroupId);
+        try {
+          const groupInfo = await GetGroupInfo(activeGroupId);
+          if (!cancelled) {
+            setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
+          }
+        } catch {
+          // Keep task editing available even if the group display name cannot be refreshed.
+        }
         if (!cancelled) {
-          setTasks(myTasks);
+          const key = editDraftKey(uid, activeGroupId);
+          const savedDraft = window.localStorage.getItem(key);
+          if (savedDraft) {
+            try {
+              const savedTasks = JSON.parse(savedDraft);
+              setTasks(Array.isArray(savedTasks) ? mergeTaskDraft(myTasks, savedTasks) : myTasks);
+            } catch {
+              window.localStorage.removeItem(key);
+              setTasks(myTasks);
+            }
+          } else {
+            setTasks(myTasks);
+          }
+          setLoadedDraftKey(key);
           setLoaded(true);
         }
       } catch (e: unknown) {
@@ -50,6 +96,15 @@ export default function EditTasksPage() {
       cancelled = true;
     };
   }, [activeGroupId, uid]);
+
+  useEffect(() => {
+    if (!uid || !activeGroupId || !loaded) return;
+
+    const key = editDraftKey(uid, activeGroupId);
+    if (loadedDraftKey !== key) return;
+
+    window.localStorage.setItem(key, JSON.stringify(tasks));
+  }, [activeGroupId, loaded, loadedDraftKey, tasks, uid]);
 
   function updateTask(index: number, patch: Partial<TaskCanEditItem>) {
     setTasks((current) =>
@@ -68,7 +123,8 @@ export default function EditTasksPage() {
       setConfirming(true);
       setConfirmStatus(null);
       await ConfirmMyGroupTasks(uid, activeGroupId, tasks);
-      setConfirmStatus("Updated");
+      window.localStorage.removeItem(editDraftKey(uid, activeGroupId));
+      navigateInFrontend(router, "/tasks?edited=1");
     } catch (e: unknown) {
       setConfirmStatus(e instanceof Error ? e.message : "Update failed");
     } finally {
@@ -94,7 +150,7 @@ export default function EditTasksPage() {
 
   return (
     <main className="editPage">
-      <div className="pageTitle">Edit tasks for group: {groupName}</div>
+      <div className="pageTitle">edit tasks for group: {groupName}</div>
 
       {tasks.length === 0 ? (
         <div className="emptyState">No tasks found.</div>
@@ -341,4 +397,22 @@ function PageMessage({ title, detail }: { title: string; detail: ReactNode }) {
       </div>
     </div>
   );
+}
+
+function mergeTaskDraft(
+  serverTasks: TaskCanEditItem[],
+  draftTasks: TaskCanEditItem[],
+): TaskCanEditItem[] {
+  const draftById = new Map(draftTasks.map((task) => [task.id, task]));
+  return serverTasks.map((task) => {
+    const draft = draftById.get(task.id);
+    if (!draft) return task;
+
+    return {
+      ...task,
+      description: draft.description,
+      status: draft.status,
+      due_date: draft.due_date,
+    };
+  });
 }

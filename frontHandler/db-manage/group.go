@@ -149,6 +149,7 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 			AND (
 				requester.role IN ('admin', 'manager')
 				OR assigned_to.line_user_id = $1
+				OR assigned_by.line_user_id = $1
 			)
 		ORDER BY t.due_date ASC, t.id ASC
 	`, uid, gid)
@@ -181,7 +182,7 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 	return tasks, nil
 }
 
-func UpdateMyGroupTasks(db *sql.DB, tasks []TaskEditItem) error {
+func UpdateMyGroupTasks(db *sql.DB, uid string, gid string, tasks []TaskEditItem) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -205,14 +206,27 @@ func UpdateMyGroupTasks(db *sql.DB, tasks []TaskEditItem) error {
 		deadlineAt := time.Date(dueDate.Year(), dueDate.Month(), dueDate.Day(), 23, 59, 59, 0, time.Local)
 
 		result, err := tx.ExecContext(ctx, `
+			WITH requester AS (
+				SELECT id, role
+				FROM line_users
+				WHERE line_user_id = $1
+			)
 			UPDATE task t
 			SET
-				description = $2,
-				status = $3,
-				due_date = $4,
+				description = $4,
+				status = $5,
+				due_date = $6,
 				updated_at = now()
-			WHERE t.id = $1
-		`, task.ID, task.Description, task.Status, deadlineAt)
+			FROM line_groups g, requester
+			WHERE t.id = $3
+				AND t.assigned_group = g.id
+				AND g.line_group_id = $2
+				AND (
+					requester.role IN ('admin', 'manager')
+					OR t.assigned_to = requester.id
+					OR t.assigned_by = requester.id
+				)
+		`, uid, gid, task.ID, task.Description, task.Status, deadlineAt)
 		if err != nil {
 			return fmt.Errorf("update task %d error: %w", task.ID, err)
 		}
