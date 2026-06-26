@@ -10,6 +10,8 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot_www:/var/www/certbot:ro
       - letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - samdang
 
   certbot:
     build:
@@ -34,3 +36,8 @@ services:
 volumes:
   letsencrypt:
   certbot_www:
+
+networks:
+  samdang:
+    external: true
+    name: samdang

@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-DOMAIN="localhost"
-EMAIL="chinapat.r@ku.th"
+DOMAIN="152.42.184.65"
+EMAIL="jojoboy1997@gmail.com"
 
 certbot certonly \
   --webroot \
