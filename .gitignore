@@ -28,6 +28,8 @@ go.work.sum
 # env file
 .env
 .psql
+.key
+.crt
 
 # Editor/IDE
 # .idea/
