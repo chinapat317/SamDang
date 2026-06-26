@@ -1,6 +1,9 @@
 services:
   frontend:
-    image: jojoboy1997/linebot-frontend:latest
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_LINE_LIFF_ID: ${NEXT_PUBLIC_LINE_LIFF_ID:-2010065177-SzAPAK72}
     container_name: samdang-frontend
     env_file:
       - ../.env
