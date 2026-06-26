@@ -12,6 +12,8 @@ services:
       - ./db/init:/docker-entrypoint-initdb.d:ro
     expose:
       - "5432"
+    networks:
+      - samdang
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -34,9 +36,11 @@ services:
         condition: service_healthy
     expose:
       - "8080"
+    networks:
+      - samdang
     restart: unless-stopped
 
-  frontHandler:
+  fronthandler:
     build:
       context: ./frontHandler
     container_name: samdang-front-handler
@@ -51,6 +55,8 @@ services:
         condition: service_healthy
     expose:
       - "8082"
+    networks:
+      - samdang
     restart: unless-stopped
 
   frontend:
@@ -62,12 +68,18 @@ services:
     environment:
       TZ: Asia/Bangkok
       PORT: 8081
-      FRONT_HANDLER_INTERNAL_URL: http://frontHandler:8082
+      FRONT_HANDLER_INTERNAL_URL: http://fronthandler:8082
     depends_on:
-      - frontHandler
+      - fronthandler
     expose:
       - "8081"
+    networks:
+      - samdang
     restart: unless-stopped
 
 volumes:
   samdang-db-data:
+
+networks:
+  samdang:
+    name: samdang
