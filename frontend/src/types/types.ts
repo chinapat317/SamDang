@@ -48,11 +48,8 @@ export type TaskCanEditItem = {
 
 export type LiffProf = {
   uid: string;
-  groupId?: string;
-  sourceType?: string;
   pictureUrl: string;
   liff_loading: boolean;
   displayName: string;
   error: string | null;
 };
-

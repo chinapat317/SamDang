@@ -2,48 +2,9 @@
 
 import { useEffect } from "react";
 import { useSetLiffProf } from "@/context/LiffProf";
+import { getLiffId, initLiff } from "@/lib/liff";
 
-type LiffProfile = {
-  userId?: string;
-  displayName?: string;
-  pictureUrl?: string;
-};
-
-type LiffSdk = {
-  init: (options: { liffId: string }) => Promise<void>;
-  isLoggedIn: () => boolean;
-  login: (options?: { redirectUri?: string }) => void;
-  getProfile: () => Promise<LiffProfile>;
-};
-
-type LiffWindow = Window & {
-  liff?: LiffSdk;
-};
-
-let liffInitPromise: Promise<void> | null = null;
 let liffLoginStarted = false;
-
-async function loadLiffSdk(): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector('script[data-liff-sdk="1"]');
-    if (existing) return resolve();
-
-    const s = document.createElement("script");
-    s.src = "https://static.line-scdn.net/liff/edge/2/sdk.js";
-    s.async = true;
-    s.dataset.liffSdk = "1";
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load LIFF SDK"));
-    document.body.appendChild(s);
-  });
-}
-
-async function initLiff(liff: LiffSdk, liffId: string) {
-  if (!liffInitPromise) {
-    liffInitPromise = liff.init({ liffId });
-  }
-  await liffInitPromise;
-}
 
 export default function LiffBootstrap() {
   const setProf = useSetLiffProf();
@@ -55,14 +16,7 @@ export default function LiffBootstrap() {
       try {
         setProf((p) => ({ ...p, liff_loading: true, error: null }));
 
-        await loadLiffSdk();
-        const liff = (window as LiffWindow).liff;
-        if (!liff) throw new Error("window.liff is missing");
-
-        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-        if (!liffId) throw new Error("NEXT_PUBLIC_LINE_LIFF_ID is not set");
-
-        await initLiff(liff, liffId);
+        const liff = await initLiff(getLiffId());
 
         if (!liff.isLoggedIn()) {
           if (!liffLoginStarted) {

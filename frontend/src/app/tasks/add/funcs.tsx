@@ -1,7 +1,6 @@
 import { TaskRow } from "@/types/types";
 import { Dispatch, SetStateAction } from "react";
 
-//Types
 type AssignTasksParams = {
   groupId: string | null | undefined;
   taskRows: TaskRow[];
@@ -10,22 +9,7 @@ type AssignTasksParams = {
   setAssigning: Dispatch<SetStateAction<boolean>>;
 };
 
-export type AssignPayload = {
-  requestedBy: {
-    name: string;
-    // later: lineUserId, pictureUrl, etc.
-  };
-  tasks: Array<{
-    assignedTo: string;
-    assignedBy: string;
-    title: string;
-    description: string;
-    assignDate: string; // ISO
-    dueDate: string; // yyyy-mm-dd
-  }>;
-};
-
-export type AssignPayloadItem = {
+type AssignPayloadItem = {
   group_id: string;
   assigned_to_line_display_name: string;
   assigned_by_line_display_name: string;
@@ -34,7 +18,6 @@ export type AssignPayloadItem = {
   assign_date: string;
   due_date: string;
 };
-//Functions
 
 export function nowISO() {
   return new Date().toISOString();
@@ -138,7 +121,7 @@ export async function assignTasks({
     console.log("assign payload:", payload);
     return true;
   } catch (e: unknown) {
-    setAssignStatus(getErrorMessage(e, "Assign failed"));
+    setAssignStatus(e instanceof Error ? e.message : "Assign failed");
     return false;
   } finally {
     setAssigning(false);

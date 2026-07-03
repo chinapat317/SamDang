@@ -1,62 +1,35 @@
 "use client";
 
 import { useLiffProf } from "@/context/LiffProf";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-
-function normalizeFrontendPath(rawState: string | null) {
-  if (!rawState) return null;
-
-  let state = rawState.trim();
-  if (!state) return null;
-
-  try {
-    state = decodeURIComponent(state);
-  } catch {
-    // URLSearchParams already decodes normal query values.
-  }
-
-  if (state.startsWith(window.location.origin)) {
-    state = state.slice(window.location.origin.length);
-  }
-
-  if (state === "/front") {
-    return null;
-  } else if (state.startsWith("/front/")) {
-    state = state.slice("/front".length);
-  }
-
-  if (!state.startsWith("/")) {
-    state = `/${state}`;
-  }
-
-  if (state.startsWith("//") || state.startsWith("/http://") || state.startsWith("/https://")) {
-    return null;
-  }
-
-  return state;
-}
-
-function redirectToFrontend(router: { replace: (path: string) => void }, path: string) {
-  router.replace(path);
-}
+import { getLiffId, initLiff } from "@/lib/liff";
+import { useEffect, useState } from "react";
 
 export default function HomePage() {
-  const router = useRouter();
-  const { uid, liff_loading, error } = useLiffProf();
+  const { error } = useLiffProf();
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (liff_loading || !uid || error) return;
+    if (error) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const targetPath = normalizeFrontendPath(params.get("liff.state"));
-    if (!targetPath) return;
+    let cancelled = false;
 
-    redirectToFrontend(router, targetPath);
-  }, [error, liff_loading, router, uid]);
+    async function initializeLiff() {
+      try {
+        await initLiff(getLiffId());
+      } catch (e: unknown) {
+        if (cancelled) return;
+        setInitError(e instanceof Error ? e.message : "LIFF error");
+      }
+    }
 
-  if (error) {
-    return <PageMessage title="Failed to authenticate" detail={error} />;
+    initializeLiff();
+    return () => {
+      cancelled = true;
+    };
+  }, [error]);
+
+  if (error || initError) {
+    return <PageMessage title="Failed to authenticate" detail={error || initError || ""} />;
   }
 
   return <PageMessage title="Loading..." detail="Preparing LINE profile" />;
