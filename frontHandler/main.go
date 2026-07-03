@@ -47,13 +47,16 @@ func main() {
 		postGroup.POST("/prof", api.ProfHandler(db))
 		postGroup.POST("/ginfo", api.GroupInfoHandler(db))
 		postGroup.POST("/my_groups", api.MyGroupsHandler(db))
+		postGroup.POST("/checkrole", api.CheckRoleHandler(db))
 
 		tasksGroup := postGroup.Group("/tasks")
 		{
 			tasksGroup.POST("/assign", api.TaskAssignHandler(db))
 			tasksGroup.POST("/show/group", api.ShowGroupTasks(db))
 			tasksGroup.POST("/edit/group", api.EditGroupShow(db))
+			tasksGroup.POST("/group/done", api.GetGroupDoneTasks(db))
 			tasksGroup.POST("/edit/confirm", api.EditGroupConfirm(db))
+			tasksGroup.POST("/check/confirm", api.CheckGroupConfirm(db))
 		}
 
 		adminGroup := postGroup.Group("/admin")

@@ -38,10 +38,12 @@ export type TaskCanEditItem = {
   id: number;
   assigned_to: string;
   assigned_by: string;
+  checked_by: string;
   status: "done" | "in progress";
   title: string;
   description: string;
   due_date: string;
+  checked: boolean;
 };
 
 export type LiffProf = {
@@ -53,6 +55,4 @@ export type LiffProf = {
   displayName: string;
   error: string | null;
 };
-
-
 

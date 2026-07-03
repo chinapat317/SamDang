@@ -31,10 +31,12 @@ type TaskCanEditItem struct {
 	ID          int64  `json:"id"`
 	AssignedTo  string `json:"assigned_to"`
 	AssignedBy  string `json:"assigned_by"`
+	CheckedBy   string `json:"checked_by"`
 	Status      string `json:"status"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"due_date"`
+	Checked     bool   `json:"checked"`
 }
 
 type TaskEditItem struct {
@@ -42,4 +44,10 @@ type TaskEditItem struct {
 	Description string `json:"description"`
 	Status      string `json:"status"`
 	DueDate     string `json:"due_date"`
+}
+
+type TaskCheckItem struct {
+	ID      int64  `json:"id"`
+	Status  string `json:"status"`
+	Checked bool   `json:"checked"`
 }

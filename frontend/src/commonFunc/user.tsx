@@ -59,3 +59,19 @@ export async function UpdateUsersRole(uid: string, users: EditUserRole[]): Promi
     throw new Error(`UpdateUsersRole failed ${res.status}: ${text}`);
   }
 }
+
+export async function CheckRole(uid: string, role: string[]): Promise<boolean> {
+  const res = await fetch("/front-api/post/checkrole", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ uid, role }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`CheckRole failed ${res.status}: ${text}`);
+  }
+
+  const data = await res.json();
+  return Boolean(data?.is_allowed);
+}

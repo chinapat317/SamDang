@@ -33,6 +33,10 @@ type CheckUserInGroupResp struct {
 	IsInGroup bool `json:"is_in_group"`
 }
 
+type CheckUserRoleResp struct {
+	IsAllowed bool `json:"is_allowed"`
+}
+
 type MyGroupsResp []dbmanage.MyGroupItem
 
 type UsersResp []dbmanage.UserItem
@@ -61,4 +65,14 @@ type TaskEditRequest struct {
 	UID   string                  `json:"uid"`
 	GID   string                  `json:"gid"`
 	Tasks []dbmanage.TaskEditItem `json:"tasks"`
+}
+
+type TaskCheckRequest struct {
+	UID   string                   `json:"uid"`
+	GID   string                   `json:"gid"`
+	Tasks []dbmanage.TaskCheckItem `json:"tasks"`
+}
+
+type CheckRoleResp struct {
+	IsAllowed bool `json:"is_allowed"`
 }

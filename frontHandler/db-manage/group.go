@@ -136,14 +136,17 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 			t.id,
 			COALESCE(assigned_to.display_name, ''),
 			COALESCE(assigned_by.display_name, ''),
+			COALESCE(checked_by.display_name, ''),
 			t.status,
 			t.title,
 			COALESCE(t.description, ''),
-			t.due_date
+			t.due_date,
+			t.check_by IS NOT NULL
 		FROM task t
 		JOIN line_groups g ON g.id = t.assigned_group
 		LEFT JOIN line_users assigned_to ON assigned_to.id = t.assigned_to
 		LEFT JOIN line_users assigned_by ON assigned_by.id = t.assigned_by
+		LEFT JOIN line_users checked_by ON checked_by.id = t.check_by
 		CROSS JOIN requester
 		WHERE g.line_group_id = $2
 			AND (
@@ -166,10 +169,12 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 			&task.ID,
 			&task.AssignedTo,
 			&task.AssignedBy,
+			&task.CheckedBy,
 			&task.Status,
 			&task.Title,
 			&task.Description,
 			&dueDate,
+			&task.Checked,
 		); err != nil {
 			return nil, err
 		}
@@ -229,6 +234,53 @@ func UpdateMyGroupTasks(db *sql.DB, uid string, gid string, tasks []TaskEditItem
 		`, uid, gid, task.ID, task.Description, task.Status, deadlineAt)
 		if err != nil {
 			return fmt.Errorf("update task %d error: %w", task.ID, err)
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("read affected rows for task %d error: %w", task.ID, err)
+		}
+		if affected != 1 {
+			return fmt.Errorf("task %d not found or not allowed", task.ID)
+		}
+	}
+
+	return tx.Commit()
+}
+
+func CheckMyGroupTasks(db *sql.DB, uid string, tasks []TaskCheckItem) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, task := range tasks {
+		if task.ID == 0 {
+			return fmt.Errorf("task id is required")
+		}
+		if task.Status != "done" && task.Status != "in progress" {
+			return fmt.Errorf("invalid status for task %d", task.ID)
+		}
+
+		result, err := tx.ExecContext(ctx, `
+			WITH requester AS (
+				SELECT id
+				FROM line_users
+				WHERE line_user_id = $1
+			)
+			UPDATE task t
+			SET
+				status = $3,
+				check_by = CASE WHEN $4 THEN requester.id ELSE t.check_by END,
+				updated_at = now()
+			FROM requester
+			WHERE t.id = $2
+		`, uid, task.ID, task.Status, task.Checked)
+		if err != nil {
+			return fmt.Errorf("check task %d error: %w", task.ID, err)
 		}
 		affected, err := result.RowsAffected()
 		if err != nil {
@@ -324,4 +376,48 @@ func AssignTask(db *sql.DB, task TaskAssignItem) error {
 	}
 
 	return nil
+}
+
+func GetGroupDoneTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := db.QueryContext(ctx, `
+		select t.id, t.title, coalesce(t.description, ''), t.status, t.due_date, coalesce(assigned_to.display_name, ''), coalesce(assigned_by.display_name, ''), coalesce(checked_by.display_name, '')
+		from task t
+		join line_groups g on g.id = t.assigned_group
+		left join line_users assigned_to on assigned_to.id = t.assigned_to
+		left join line_users assigned_by on assigned_by.id = t.assigned_by
+		left join line_users checked_by on checked_by.id = t.check_by
+		where g.line_group_id = $1 and t.status = 'done'
+		order by t.due_date asc, t.id asc
+	`, gid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tasks := make([]TaskCanEditItem, 0)
+	for rows.Next() {
+		var task TaskCanEditItem
+		var dueDate time.Time
+		if err := rows.Scan(
+			&task.ID,
+			&task.Title,
+			&task.Description,
+			&task.Status,
+			&dueDate,
+			&task.AssignedTo,
+			&task.AssignedBy,
+			&task.CheckedBy,
+		); err != nil {
+			return nil, err
+		}
+		task.DueDate = dueDate.Format("2006-01-02")
+		tasks = append(tasks, task)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tasks, nil
 }

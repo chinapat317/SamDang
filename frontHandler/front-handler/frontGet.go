@@ -15,6 +15,30 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func CheckRoleHandler(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UIDnRoleReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "CheckRoleHandler: invalid json body")
+			return
+		}
+		req.UID = strings.TrimSpace(req.UID)
+		if req.UID == "" {
+			c.String(http.StatusBadRequest, "CheckRoleHandler: uid is required")
+			return
+		}
+		isAllowed, err := dbmanage.CheckUserRole(req.UID, db, req.ROLE)
+		if err != nil {
+			log.Printf("CheckRoleHandler: failed to check user role: %v\n", err)
+			c.String(http.StatusInternalServerError, "CheckRoleHandler: failed to check user role")
+			return
+		}
+		c.JSON(http.StatusOK, CheckRoleResp{
+			IsAllowed: isAllowed,
+		})
+	}
+}
+
 func ProfHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UIDReq
@@ -375,5 +399,59 @@ func EditGroupConfirm(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+func CheckGroupConfirm(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req TaskCheckRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "CheckGroupConfirm: invalid json body")
+			return
+		}
+
+		uid := strings.TrimSpace(req.UID)
+		if uid == "" {
+			c.String(http.StatusBadRequest, "CheckGroupConfirm: uid is required")
+			return
+		}
+		if len(req.Tasks) == 0 {
+			c.String(http.StatusBadRequest, "CheckGroupConfirm: no tasks")
+			return
+		}
+
+		if err := dbmanage.CheckMyGroupTasks(db, uid, req.Tasks); err != nil {
+			log.Printf("CheckGroupConfirm: failed to check tasks: %v\n", err)
+			c.String(http.StatusInternalServerError, "CheckGroupConfirm: failed to check tasks")
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	}
+}
+
+func GetGroupDoneTasks(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UserGroupReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "GetGroupDoneTasks: invalid json body")
+			return
+		}
+
+		uid := strings.TrimSpace(req.UID)
+		gid := strings.TrimSpace(req.GID)
+		if uid == "" || gid == "" {
+			c.String(http.StatusBadRequest, "GetGroupDoneTasks: uid and gid are required")
+			return
+		}
+
+		doneTasks, err := dbmanage.GetGroupDoneTasks(db, uid, gid)
+		if err != nil {
+			log.Printf("GetGroupDoneTasks: failed to get done tasks: %v\n", err)
+			c.String(http.StatusInternalServerError, "GetGroupDoneTasks: failed to get done tasks")
+			return
+		}
+
+		c.JSON(http.StatusOK, MyGroupTasksResp(doneTasks))
 	}
 }

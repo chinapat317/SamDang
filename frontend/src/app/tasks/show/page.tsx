@@ -94,6 +94,7 @@ export default function ShowTasksPage() {
             <div>description</div>
             <div>assigned to</div>
             <div>assigned by</div>
+            <div>checked by</div>
             <div>due date</div>
             <div>status</div>
           </div>
@@ -115,6 +116,10 @@ export default function ShowTasksPage() {
               <div className="taskCell">
                 <span className="mobileLabel">assigned by</span>
                 <span className="cellText">{task.assigned_by || "-"}</span>
+              </div>
+              <div className="taskCell">
+                <span className="mobileLabel">checked by</span>
+                <span className="cellText">{task.checked_by || ""}</span>
               </div>
               <div className="taskCell">
                 <span className="mobileLabel">due date</span>
@@ -165,7 +170,8 @@ export default function ShowTasksPage() {
           display: grid;
           grid-template-columns:
             minmax(150px, 1.4fr) minmax(180px, 1.7fr) minmax(130px, 1.1fr)
-            minmax(130px, 1.1fr) minmax(110px, 0.9fr) minmax(110px, 0.9fr);
+            minmax(130px, 1.1fr) minmax(130px, 1.1fr) minmax(110px, 0.9fr)
+            minmax(110px, 0.9fr);
           align-items: stretch;
         }
 

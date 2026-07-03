@@ -1,6 +1,7 @@
 "use client";
 
 import { GetGroupInfo, GetMyGroups } from "@/commonFunc/group";
+import { CheckRole } from "@/commonFunc/user";
 import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
 import { GroupInfo } from "@/types/types";
@@ -30,6 +31,8 @@ export default function TasksPage() {
   const [openingShowPage, setOpeningShowPage] = useState(false);
   const [openingAddPage, setOpeningAddPage] = useState(false);
   const [openingEditPage, setOpeningEditPage] = useState(false);
+  const [openingCheckPage, setOpeningCheckPage] = useState(false);
+  const [isManager, setIsManager] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [showSelectGroupPopup, setShowSelectGroupPopup] = useState(false);
   const [showAssignedPopup, setShowAssignedPopup] = useState(() => {
@@ -71,6 +74,26 @@ export default function TasksPage() {
       cancelled = true;
     };
   }, [setGroups, uid]);
+
+  useEffect(() => {
+    if (!uid) return;
+
+    let cancelled = false;
+
+    async function loadManagerRole() {
+      try {
+        const allowed = await CheckRole(uid, ["manager", "admin"]);
+        if (!cancelled) setIsManager(allowed);
+      } catch {
+        if (!cancelled) setIsManager(false);
+      }
+    }
+
+    loadManagerRole();
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
 
   async function prepareSelectedGroup() {
     if (!selectedGroup) {
@@ -134,6 +157,19 @@ export default function TasksPage() {
       setErrMsg(e instanceof Error ? e.message : "Failed to open edit task page");
     } finally {
       setOpeningEditPage(false);
+    }
+  }
+
+  async function goCheckWork() {
+    try {
+      setOpeningCheckPage(true);
+      const ready = await prepareSelectedGroup();
+      if (!ready || !selectedGroup) return;
+      navigateInFrontend(router, `/manager/check?gid=${encodeURIComponent(selectedGroup.group_id)}`);
+    } catch (e: unknown) {
+      setErrMsg(e instanceof Error ? e.message : "Failed to open check works page");
+    } finally {
+      setOpeningCheckPage(false);
     }
   }
 
@@ -214,6 +250,16 @@ export default function TasksPage() {
             >
               {openingEditPage ? "Opening..." : "Edit"}
             </button>
+            {isManager ? (
+              <button
+                type="button"
+                className="secondaryButton"
+                disabled={openingCheckPage}
+                onClick={goCheckWork}
+              >
+                {openingCheckPage ? "Opening..." : "Check works"}
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -433,7 +479,7 @@ export default function TasksPage() {
           .headerActions {
             width: 100%;
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
           }
 
           .secondaryButton,
