@@ -50,10 +50,10 @@ func main() {
 
 		tasksGroup := postGroup.Group("/tasks")
 		{
-			tasksGroup.POST("/tasks/assign", api.TaskAssignHandler(db))
-			tasksGroup.POST("/tasks/show/group", api.ShowGroupTasks(db))
-			tasksGroup.POST("/tasks/edit/group", api.EditGroupShow(db))
-			tasksGroup.POST("/tasks/edit/confirm", api.EditGroupConfirm(db))
+			tasksGroup.POST("/assign", api.TaskAssignHandler(db))
+			tasksGroup.POST("/show/group", api.ShowGroupTasks(db))
+			tasksGroup.POST("/edit/group", api.EditGroupShow(db))
+			tasksGroup.POST("/edit/confirm", api.EditGroupConfirm(db))
 		}
 
 		adminGroup := postGroup.Group("/admin")

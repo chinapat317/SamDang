@@ -12,13 +12,16 @@ type LiffProfile = {
 type LiffSdk = {
   init: (options: { liffId: string }) => Promise<void>;
   isLoggedIn: () => boolean;
-  login: () => void;
+  login: (options?: { redirectUri?: string }) => void;
   getProfile: () => Promise<LiffProfile>;
 };
 
 type LiffWindow = Window & {
   liff?: LiffSdk;
 };
+
+let liffInitPromise: Promise<void> | null = null;
+let liffLoginStarted = false;
 
 async function loadLiffSdk(): Promise<void> {
   await new Promise<void>((resolve, reject) => {
@@ -33,6 +36,13 @@ async function loadLiffSdk(): Promise<void> {
     s.onerror = () => reject(new Error("Failed to load LIFF SDK"));
     document.body.appendChild(s);
   });
+}
+
+async function initLiff(liff: LiffSdk, liffId: string) {
+  if (!liffInitPromise) {
+    liffInitPromise = liff.init({ liffId });
+  }
+  await liffInitPromise;
 }
 
 export default function LiffBootstrap() {
@@ -52,10 +62,13 @@ export default function LiffBootstrap() {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
         if (!liffId) throw new Error("NEXT_PUBLIC_LINE_LIFF_ID is not set");
 
-        await liff.init({ liffId });
+        await initLiff(liff, liffId);
 
         if (!liff.isLoggedIn()) {
-          liff.login();
+          if (!liffLoginStarted) {
+            liffLoginStarted = true;
+            liff.login({ redirectUri: window.location.href });
+          }
           return;
         }
 
