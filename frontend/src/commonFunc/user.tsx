@@ -1,4 +1,4 @@
-import { Users } from "@/types/types";
+import { EditUserRole, Users } from "@/types/types";
 
 export async function GetAllUsers(uid: string): Promise<Users[]> {
   const res = await fetch("/front-api/post/admin/users", {
@@ -26,7 +26,7 @@ export async function GetUsersByRole(uid: string, role: string[]): Promise<Users
   const res = await fetch("/front-api/post/admin/users/role", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid, role}),
+    body: JSON.stringify({ uid, role }),
   });
 
   if (!res.ok) {
@@ -44,7 +44,7 @@ export async function GetUsersByRole(uid: string, role: string[]): Promise<Users
   throw new Error("Invalid response format from backend");
 }
 
-export async function UpdateUsersRole(uid: string, users: Users[]): Promise<void> {
+export async function UpdateUsersRole(uid: string, users: EditUserRole[]): Promise<void> {
   const res = await fetch("/front-api/post/admin/edit/users/confirm", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

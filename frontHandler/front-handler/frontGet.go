@@ -314,22 +314,38 @@ func GetUsersByRoleHandler(db *sql.DB, role []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req UIDnRoleReq
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.String(http.StatusBadRequest, "GetAllUsersHandler: invalid json body")
+			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: invalid json body")
 			return
 		}
-		uid := req.UID
-		role := req.ROLE
+		uid := strings.TrimSpace(req.UID)
+		filterRole := req.ROLE
+		if uid == "" {
+			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: uid is required")
+			return
+		}
+		if len(filterRole) == 0 {
+			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: role is required")
+			return
+		}
+
+		log.Printf("GetUsersByRoleHandler uid=%s role=%v", uid, filterRole)
 		isAdmin, err := dbmanage.CheckUserRole(uid, db, role)
 		if err != nil {
-			log.Printf("GetAllUsersHandler: failed to check user role: %v\n", err)
-			c.String(http.StatusInternalServerError, "GetAllUsersHandler: failed to check user role")
+			log.Printf("GetUsersByRoleHandler: failed to check user role: %v\n", err) // Tobe Deleted
+			c.String(http.StatusInternalServerError, "GetUsersByRoleHandler: failed to check user role")
 			return
 		}
 		if !isAdmin {
 			c.String(http.StatusForbidden, "Only admin can access this page")
 			return
 		}
-
+		users, err := dbmanage.GetUsersByRole(db, filterRole)
+		if err != nil {
+			log.Printf("GetUsersByRoleHandler: failed to get users by role: %v\n", err)
+			c.String(http.StatusInternalServerError, "GetUsersByRoleHandler: failed to get users by role")
+			return
+		}
+		c.JSON(http.StatusOK, users)
 	}
 }
 

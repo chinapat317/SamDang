@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -62,6 +63,62 @@ func GetAllUsers(db *sql.DB) ([]UserItem, error) {
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("read all users rows error: %w", err)
+	}
+	return users, nil
+}
+
+func GetUsersByRole(db *sql.DB, role []string) ([]UserItem, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	roles := make([]string, 0, len(role))
+	for _, item := range role {
+		item = strings.TrimSpace(item)
+		if item != "" {
+			roles = append(roles, item)
+		}
+	}
+	if len(roles) == 0 {
+		return []UserItem{}, nil
+	}
+
+	args := make([]any, len(roles))
+	placeholders := make([]string, len(roles))
+	for i, item := range roles {
+		args[i] = item
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	}
+
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT
+			line_user_id,
+			COALESCE(display_name, ''),
+			COALESCE(picture_url, ''),
+			role
+		FROM line_users
+		WHERE role IN (%s)
+		ORDER BY role ASC, display_name ASC, id ASC
+	`, strings.Join(placeholders, ", ")), args...)
+	if err != nil {
+		return nil, fmt.Errorf("query users by role error: %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]UserItem, 0)
+	for rows.Next() {
+		var user UserItem
+		if err := rows.Scan(
+			&user.UID,
+			&user.DisplayName,
+			&user.PictureURL,
+			&user.Role,
+		); err != nil {
+			return nil, fmt.Errorf("scan users by role error: %w", err)
+		}
+		users = append(users, user)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read users by role rows error: %w", err)
 	}
 	return users, nil
 }

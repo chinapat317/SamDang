@@ -59,7 +59,7 @@ func main() {
 		adminGroup := postGroup.Group("/admin")
 		{
 			adminGroup.POST("/users", api.GetAllUsersHandler(db))
-			adminGroup.POST("/users/role", api.GetUsersByRoleHandler(db, []string{"member", "manager"}))
+			adminGroup.POST("/users/role", api.GetUsersByRoleHandler(db, []string{"admin"}))
 			adminGroup.POST("/edit/users/confirm", api.UpdateUsersRoleHandler(db))
 		}
 	}

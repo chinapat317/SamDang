@@ -48,7 +48,7 @@ func main() {
 	}
 	log.Println("Connected to DB")
 
-	go startDailyTaskScheduler(db, bot)
+	go botbackend.StartDailyTaskScheduler(db, bot)
 
 	router := gin.Default()
 	router.HandleMethodNotAllowed = true
@@ -76,39 +76,4 @@ func main() {
 
 	log.Println("Listening on :" + port)
 	log.Fatal(router.Run(":" + port))
-}
-
-func startDailyTaskScheduler(db *sql.DB, bot *linebot.Client) {
-	location, err := time.LoadLocation("Asia/Bangkok")
-	if err != nil {
-		log.Printf("LoadLocation Asia/Bangkok failed: %s; using UTC+7 fixed zone", err)
-		location = time.FixedZone("Asia/Bangkok", 7*60*60)
-	}
-
-	for {
-		wait := durationUntilNextBangkokSeven(time.Now(), location)
-		log.Printf("Next daily group task push in %s", wait.Round(time.Second))
-		time.Sleep(wait)
-
-		log.Println("Sending daily group task lists")
-		botbackend.SendDailyGroupInProgressTasks(db, bot)
-	}
-}
-
-func durationUntilNextBangkokSeven(now time.Time, location *time.Location) time.Duration {
-	bangkokNow := now.In(location)
-	next := time.Date(
-		bangkokNow.Year(),
-		bangkokNow.Month(),
-		bangkokNow.Day(),
-		7,
-		0,
-		0,
-		0,
-		location,
-	)
-	if !bangkokNow.Before(next) {
-		next = next.Add(24 * time.Hour)
-	}
-	return next.Sub(bangkokNow)
 }

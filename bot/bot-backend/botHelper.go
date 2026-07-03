@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	dbmanage "github.com/chinapat317/SamDang/db-manage"
 )
@@ -47,4 +48,22 @@ func BuildGroupInProgressTaskMessage(db *sql.DB, groupId string) (string, error)
 		))
 	}
 	return "งานในกลุ่ม:\n" + strings.Join(taskList, "\n"), nil
+}
+
+func durationUntilNextBangkokSeven(now time.Time, location *time.Location) time.Duration {
+	bangkokNow := now.In(location)
+	next := time.Date(
+		bangkokNow.Year(),
+		bangkokNow.Month(),
+		bangkokNow.Day(),
+		7,
+		0,
+		0,
+		0,
+		location,
+	)
+	if !bangkokNow.Before(next) {
+		next = next.Add(24 * time.Hour)
+	}
+	return next.Sub(bangkokNow)
 }

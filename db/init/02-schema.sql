@@ -32,22 +32,6 @@ CREATE TABLE IF NOT EXISTS line_groups (
   latest_update   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE OR REPLACE FUNCTION set_latest_update()
-RETURNS trigger AS $$
-BEGIN
-  NEW.latest_update = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_line_groups_latest_update
-ON line_groups;
-
-CREATE TRIGGER trg_line_groups_latest_update
-BEFORE UPDATE ON line_groups
-FOR EACH ROW
-EXECUTE FUNCTION set_latest_update();
-
 CREATE TABLE IF NOT EXISTS line_group_members (
   line_group_id BIGINT NOT NULL REFERENCES line_groups(id)
                 ON DELETE CASCADE,
@@ -68,5 +52,8 @@ CREATE TABLE IF NOT EXISTS task (
   assigned_group  BIGINT REFERENCES line_groups(id) ON DELETE SET NULL,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   due_date        TIMESTAMPTZ NOT NULL,
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  check_by        BIGINT REFERENCES line_users(id) ON DELETE SET NULL,
+  done_at         TIMESTAMPTZ,
+  is_late         BOOLEAN DEFAULT NULL
 );

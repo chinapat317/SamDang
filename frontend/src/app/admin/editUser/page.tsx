@@ -5,9 +5,15 @@ import { useLiffProf } from "@/context/LiffProf";
 import { EditUserRole, LiffProf, Users } from "@/types/types";
 import { ReactNode, useEffect, useState } from "react";
 
+type EditableUser = Users & { role: EditUserRole["role"] };
+
+function isEditableUser(user: Users): user is EditableUser {
+  return user.role === "member" || user.role === "manager";
+}
+
 export default function EditUserPage() {
   const { uid, liff_loading } = useLiffProf() as LiffProf;
-  const [users, setUsers] = useState<Users[]>([]);
+  const [users, setUsers] = useState<EditableUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -27,7 +33,7 @@ export default function EditUserPage() {
         setSuccessMsg(null);
         const allUsers = await GetUsersByRole(uid, ["member", "manager"]);
         if (!cancelled) {
-          setUsers(allUsers);
+          setUsers(allUsers.filter(isEditableUser));
           setLoaded(true);
         }
       } catch (e: unknown) {
@@ -113,7 +119,7 @@ export default function EditUserPage() {
                 <select
                   className="roleSelect"
                   value={user.role}
-                  onChange={(e) => setUserRole(user.uid, e.target.value as EditableRole)}
+                  onChange={(e) => setUserRole(user.uid, e.target.value as EditUserRole["role"])}
                   aria-label={`${user.display_name || user.uid} role`}
                 >
                   <option value="member">member</option>

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	dbmanage "github.com/chinapat317/SamDang/db-manage"
 	"github.com/gin-gonic/gin"
@@ -31,6 +32,24 @@ func VerifySig(c *gin.Context, bot *linebot.Client) []*linebot.Event {
 		events = nil
 	}
 	return events
+}
+
+func StartDailyTaskScheduler(db *sql.DB, bot *linebot.Client) {
+	location, err := time.LoadLocation("Asia/Bangkok")
+	if err != nil {
+		log.Printf("LoadLocation Asia/Bangkok failed: %s; using UTC+7 fixed zone", err)
+		location = time.FixedZone("Asia/Bangkok", 7*60*60)
+	}
+
+	for {
+		wait := durationUntilNextBangkokSeven(time.Now(), location)
+		log.Printf("Next daily group task push in %s", wait.Round(time.Second))
+		time.Sleep(wait)
+
+		log.Println("Sending daily group task lists")
+		dbmanage.UpdateLateTask(db)
+		SendDailyGroupInProgressTasks(db, bot)
+	}
 }
 
 func EventController(events []*linebot.Event,
