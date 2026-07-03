@@ -15,6 +15,18 @@ type MyGroupItem struct {
 	GroupName string `json:"group_name"`
 }
 
+type UserItem struct {
+	UID         string `json:"uid"`
+	DisplayName string `json:"display_name"`
+	PictureURL  string `json:"picture_url"`
+	Role        string `json:"role"`
+}
+
+type UserRoleUpdateItem struct {
+	UID  string `json:"uid"`
+	Role string `json:"role"`
+}
+
 type TaskCanEditItem struct {
 	ID          int64  `json:"id"`
 	AssignedTo  string `json:"assigned_to"`

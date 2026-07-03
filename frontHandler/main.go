@@ -47,10 +47,21 @@ func main() {
 		postGroup.POST("/prof", api.ProfHandler(db))
 		postGroup.POST("/ginfo", api.GroupInfoHandler(db))
 		postGroup.POST("/my_groups", api.MyGroupsHandler(db))
-		postGroup.POST("/task/assign", api.TaskAssignHandler(db))
-		postGroup.POST("/tasks/show/group", api.ShowGroupTasks(db))
-		postGroup.POST("/tasks/edit/group", api.EditGroupShow(db))
-		postGroup.POST("/tasks/edit/confirm", api.EditGroupConfirm(db))
+
+		tasksGroup := postGroup.Group("/tasks")
+		{
+			tasksGroup.POST("/tasks/assign", api.TaskAssignHandler(db))
+			tasksGroup.POST("/tasks/show/group", api.ShowGroupTasks(db))
+			tasksGroup.POST("/tasks/edit/group", api.EditGroupShow(db))
+			tasksGroup.POST("/tasks/edit/confirm", api.EditGroupConfirm(db))
+		}
+
+		adminGroup := postGroup.Group("/admin")
+		{
+			adminGroup.POST("/users", api.GetAllUsersHandler(db))
+			adminGroup.POST("/users/role", api.GetUsersByRoleHandler(db, []string{"member", "manager"}))
+			adminGroup.POST("/edit/users/confirm", api.UpdateUsersRoleHandler(db))
+		}
 	}
 
 	port := os.Getenv("FRONT_HANDLER_PORT")

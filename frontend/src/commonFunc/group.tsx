@@ -1,4 +1,4 @@
-import { GroupInfo, Users } from "@/types/types";
+import { GroupInfo, ListUsers } from "@/types/types";
 
 export async function GetGroupInfo(gid: string): Promise<GroupInfo> {
   const res = await fetch("/front-api/post/ginfo", {
@@ -18,13 +18,13 @@ export async function GetGroupInfo(gid: string): Promise<GroupInfo> {
   throw new Error("Invalid response format from backend");
 }
 
-export function MemberList(groupMemJson: unknown): Users[] {
+export function MemberList(groupMemJson: unknown): ListUsers[] {
   if (!groupMemJson || typeof groupMemJson !== "object") {
     return [];
   }
 
   const groupInfo = groupMemJson as Partial<GroupInfo> & {
-    members?: Users[] | Record<string, Users>;
+    members?: ListUsers[] | Record<string, ListUsers>;
   };
   const members = groupInfo.group_members ?? groupInfo.members;
 

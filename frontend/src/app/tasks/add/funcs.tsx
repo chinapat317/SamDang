@@ -123,7 +123,7 @@ export async function assignTasks({
 
   try {
     setAssigning(true);
-    const res = await fetch("/front-api/post/task/assign", {
+    const res = await fetch("/front-api/post/tasks/assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

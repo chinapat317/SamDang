@@ -17,7 +17,7 @@ import (
 
 func ProfHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req ProfReq
+		var req UIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "ProfReq: invalid json body")
 			return
@@ -45,7 +45,7 @@ func ProfHandler(db *sql.DB) gin.HandlerFunc {
 
 func GroupInfoHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req GReq
+		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "GroupReq: invalid json body")
 			return
@@ -112,7 +112,7 @@ func CheckUserInGroupHandler(db *sql.DB) gin.HandlerFunc {
 
 func MyGroupsHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req ProfReq
+		var req UIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "MyGroupsHandler: invalid json body")
 			return
@@ -132,6 +132,78 @@ func MyGroupsHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, MyGroupsResp(groups))
+	}
+}
+
+func GetAllUsersHandler(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UIDReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "GetAllUsersHandler: invalid json body")
+			return
+		}
+		uid := strings.TrimSpace(req.UID)
+		if uid == "" {
+			c.String(http.StatusBadRequest, "GetAllUsersHandler: uid is required")
+			return
+		}
+		isAdmin, err := dbmanage.CheckUserRole(uid, db, []string{"admin"})
+		if err != nil {
+			log.Printf("GetAllUsersHandler: failed to check user role: %v\n", err)
+			c.String(http.StatusInternalServerError, "GetAllUsersHandler: failed to check user role")
+			return
+		}
+		if !isAdmin {
+			c.String(http.StatusForbidden, "Only admin can access this page")
+			return
+		}
+		allUsers, err := dbmanage.GetAllUsers(db)
+		if err != nil {
+			log.Printf("GetAllUsersHandler: failed to get all users: %v\n", err)
+			c.String(http.StatusInternalServerError, "GetAllUsersHandler: failed to get all users")
+			return
+		}
+		c.JSON(http.StatusOK, UsersResp(allUsers))
+	}
+}
+
+func UpdateUsersRoleHandler(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UpdateUsersRoleReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: invalid json body")
+			return
+		}
+
+		uid := strings.TrimSpace(req.UID)
+		if uid == "" {
+			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: uid is required")
+			return
+		}
+
+		isAdmin, err := dbmanage.CheckUserRole(uid, db, []string{"admin"})
+		if err != nil {
+			log.Printf("UpdateUsersRoleHandler: failed to check user role: %v\n", err)
+			c.String(http.StatusInternalServerError, "UpdateUsersRoleHandler: failed to check user role")
+			return
+		}
+		if !isAdmin {
+			c.String(http.StatusForbidden, "Only admin can access")
+			return
+		}
+
+		if len(req.Users) == 0 {
+			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: users are required")
+			return
+		}
+
+		if err := dbmanage.UpdateUsersRole(db, req.Users); err != nil {
+			log.Printf("UpdateUsersRoleHandler: failed to update user roles: %v\n", err)
+			c.String(http.StatusInternalServerError, "UpdateUsersRoleHandler: failed to update user roles")
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"ok": true})
 	}
 }
 
@@ -235,6 +307,29 @@ func ShowGroupTasks(db *sql.DB) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, MyGroupTasksResp(groupTasks))
+	}
+}
+
+func GetUsersByRoleHandler(db *sql.DB, role []string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req UIDnRoleReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "GetAllUsersHandler: invalid json body")
+			return
+		}
+		uid := req.UID
+		role := req.ROLE
+		isAdmin, err := dbmanage.CheckUserRole(uid, db, role)
+		if err != nil {
+			log.Printf("GetAllUsersHandler: failed to check user role: %v\n", err)
+			c.String(http.StatusInternalServerError, "GetAllUsersHandler: failed to check user role")
+			return
+		}
+		if !isAdmin {
+			c.String(http.StatusForbidden, "Only admin can access this page")
+			return
+		}
+
 	}
 }
 

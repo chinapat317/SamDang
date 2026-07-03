@@ -7,8 +7,12 @@ type GroupInfoResp struct {
 	Members   map[string]MemberInfo `json:"members"`
 }
 
-type ProfReq struct {
+type UIDReq struct {
 	UID string `json:"uid"`
+}
+type UIDnRoleReq struct {
+	UID  string   `json:"uid"`
+	ROLE []string `json:"role"`
 }
 
 type ProfResp struct {
@@ -16,7 +20,7 @@ type ProfResp struct {
 	PictureURL  string `json:"picture_url"`
 }
 
-type GReq struct {
+type GIDReq struct {
 	GID string `json:"gid"`
 }
 
@@ -30,6 +34,8 @@ type CheckUserInGroupResp struct {
 }
 
 type MyGroupsResp []dbmanage.MyGroupItem
+
+type UsersResp []dbmanage.UserItem
 
 type MyGroupTasksResp []dbmanage.TaskCanEditItem
 
@@ -45,6 +51,11 @@ type Gname struct {
 type TaskAssignItem = dbmanage.TaskAssignItem
 
 type TaskAssignRequest map[string]TaskAssignItem
+
+type UpdateUsersRoleReq struct {
+	UID   string                        `json:"uid"`
+	Users []dbmanage.UserRoleUpdateItem `json:"users"`
+}
 
 type TaskEditRequest struct {
 	UID   string                  `json:"uid"`

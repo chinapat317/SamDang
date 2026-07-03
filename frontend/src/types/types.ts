@@ -3,14 +3,26 @@ export type GroupInfo = {
   group_id: string;
   group_name?: string;
   line_group_name?: string;
-  group_members?: Users[] | Record<string, Users>;
-  members?: Users[] | Record<string, Users>;
+  group_members?: ListUsers[] | Record<string, ListUsers>;
+  members?: ListUsers[] | Record<string, ListUsers>;
 };
 
-export type Users = {
+export type ListUsers = {
   userId: string;
   display_name: string;
   picture_url: string;
+};
+
+export type Users = {
+  uid: string;
+  display_name: string;
+  picture_url: string;
+  role: "admin" | "manager" | "member";
+};
+
+export type EditUserRole = {
+  uid: string;
+  role: "manager" | "member";
 };
 
 export type TaskRow = {
