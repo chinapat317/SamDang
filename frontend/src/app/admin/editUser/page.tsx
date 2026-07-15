@@ -1,8 +1,9 @@
 "use client";
 
 import { GetUsersByRole, UpdateUsersRole } from "@/commonFunc/user";
-import { useLiffProf } from "@/context/LiffProf";
-import { EditUserRole, LiffProf, Users } from "@/types/types";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
+import { useLiffSession } from "@/lib/liff-session";
+import { EditUserRole, Users } from "@/types/types";
 import { ReactNode, useEffect, useState } from "react";
 
 type EditableUser = Users & { role: EditUserRole["role"] };
@@ -12,7 +13,9 @@ function isEditableUser(user: Users): user is EditableUser {
 }
 
 export default function EditUserPage() {
-  const { uid, liff_loading } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const [users, setUsers] = useState<EditableUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -21,7 +24,7 @@ export default function EditUserPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!accessToken) return;
 
     let cancelled = false;
 
@@ -31,7 +34,7 @@ export default function EditUserPage() {
         setLoaded(false);
         setErrMsg(null);
         setSuccessMsg(null);
-        const allUsers = await GetUsersByRole(uid, ["member", "manager"]);
+        const allUsers = await GetUsersByRole(accessToken, ["member", "manager"]);
         if (!cancelled) {
           setUsers(allUsers.filter(isEditableUser));
           setLoaded(true);
@@ -49,7 +52,7 @@ export default function EditUserPage() {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [accessToken]);
 
   async function confirmChanges() {
     try {
@@ -57,7 +60,7 @@ export default function EditUserPage() {
       setErrMsg(null);
       setSuccessMsg(null);
       await UpdateUsersRole(
-        uid,
+        accessToken,
         users.map((user) => ({ uid: user.uid, role: user.role })),
       );
       setSuccessMsg("User roles updated.");
@@ -74,12 +77,12 @@ export default function EditUserPage() {
     );
   }
 
-  if (liff_loading || (!!uid && (loading || !loaded) && !errMsg)) {
+  if (liff_loading || (!!accessToken && (loading || !loaded) && !errMsg)) {
     return <PageMessage title="Loading..." detail="Checking admin role" />;
   }
 
-  if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (errMsg && !loaded) {

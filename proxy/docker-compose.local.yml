@@ -4,8 +4,8 @@ services:
     container_name: gateway
     environment:
       TZ: Asia/Bangkok
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     volumes:
       - ./nginx/local.conf:/etc/nginx/nginx.conf:ro
     restart: unless-stopped

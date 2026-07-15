@@ -51,7 +51,7 @@ func GetGroupMember(ctx context.Context, db *sql.DB, gid string) (*sql.Rows, boo
 	isError := false
 
 	rows, err := db.QueryContext(ctx, `
-		SELECT u.display_name, u.picture_url
+		SELECT u.display_name, u.picture_url, u.line_user_hmac
 		FROM line_groups g
 		JOIN line_group_members gm ON gm.line_group_id = g.id
 		JOIN line_users u ON u.id = gm.line_user_id
@@ -294,15 +294,18 @@ func CheckMyGroupTasks(db *sql.DB, uid string, tasks []TaskCheckItem) error {
 	return tx.Commit()
 }
 
-func AssignTask(db *sql.DB, task TaskAssignItem) error {
+func AssignTask(db *sql.DB, assignedByLineUserID string, task TaskAssignItem) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if task.GroupID == "" {
 		return fmt.Errorf("group_id is required")
 	}
-	if task.AssignedTo == "" || task.AssignedBy == "" {
-		return fmt.Errorf("assigned_to/assigned_by display_name is required")
+	if task.AssignedTo == "" {
+		return fmt.Errorf("assigned_to user hash is required")
+	}
+	if assignedByLineUserID == "" {
+		return fmt.Errorf("assigned_by line user id is required")
 	}
 	if task.Title == "" {
 		return fmt.Errorf("task title is required")
@@ -330,12 +333,12 @@ func AssignTask(db *sql.DB, task TaskAssignItem) error {
 	err = db.QueryRowContext(ctx, `
 		SELECT id
 		FROM line_users
-		WHERE display_name = $1
+		WHERE line_user_hmac = $1
 		LIMIT 1
 	`, task.AssignedTo).Scan(&assignedToID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("assigned_to user not found: %s", task.AssignedTo)
+			return fmt.Errorf("assigned_to user hash not found: %s", task.AssignedTo)
 		}
 		return fmt.Errorf("query assigned_to error: %w", err)
 	}
@@ -343,12 +346,12 @@ func AssignTask(db *sql.DB, task TaskAssignItem) error {
 	err = db.QueryRowContext(ctx, `
 		SELECT id
 		FROM line_users
-		WHERE display_name = $1
+		WHERE line_user_id = $1
 		LIMIT 1
-	`, task.AssignedBy).Scan(&assignedByID)
+	`, assignedByLineUserID).Scan(&assignedByID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return fmt.Errorf("assigned_by user not found: %s", task.AssignedBy)
+			return fmt.Errorf("assigned_by user not found: %s", assignedByLineUserID)
 		}
 		return fmt.Errorf("query assigned_by error: %w", err)
 	}

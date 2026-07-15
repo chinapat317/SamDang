@@ -1,15 +1,18 @@
 "use client";
 
 import { GetGroupInfo } from "@/commonFunc/group";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { ConfirmMyGroupCheckTasks, GetMyGroupDoneTasks } from "@/commonFunc/task";
 import { CheckRole } from "@/commonFunc/user";
-import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
-import { LiffProf, TaskCanEditItem } from "@/types/types";
+import { useLiffSession } from "@/lib/liff-session";
+import { TaskCanEditItem } from "@/types/types";
 import { ReactNode, useEffect, useState } from "react";
 
 export default function CheckPage() {
-  const { uid, liff_loading } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const { selectedGroup } = useMyGroup();
   const [tasks, setTasks] = useState<TaskCanEditItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -35,13 +38,13 @@ export default function CheckPage() {
     "Group";
 
   useEffect(() => {
-    if (!uid) return;
+    if (!accessToken) return;
 
     let cancelled = false;
 
     async function checkRole() {
       try {
-        const allowed = await CheckRole(uid, ["manager", "admin"]);
+        const allowed = await CheckRole(accessToken, ["manager", "admin"]);
         if (!cancelled) setIsManager(allowed);
       } catch (e: unknown) {
         if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to check role");
@@ -54,10 +57,10 @@ export default function CheckPage() {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [accessToken]);
 
   useEffect(() => {
-    if (!uid || !activeGroupId || !roleChecked || !isManager) return;
+    if (!accessToken || !activeGroupId || !roleChecked || !isManager) return;
 
     let cancelled = false;
 
@@ -66,9 +69,9 @@ export default function CheckPage() {
         setLoading(true);
         setLoaded(false);
         setErrMsg(null);
-        const myTasks = await GetMyGroupDoneTasks(uid, activeGroupId);
+        const myTasks = await GetMyGroupDoneTasks(accessToken, activeGroupId);
         try {
-          const groupInfo = await GetGroupInfo(activeGroupId);
+          const groupInfo = await GetGroupInfo(accessToken, activeGroupId);
           if (!cancelled) setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
         } catch {
           // Keep task checking available even if the group display name cannot be refreshed.
@@ -88,7 +91,7 @@ export default function CheckPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeGroupId, isManager, roleChecked, uid]);
+  }, [accessToken, activeGroupId, isManager, roleChecked]);
 
   function updateTask(index: number, patch: Partial<TaskCanEditItem>) {
     setTasks((current) =>
@@ -97,7 +100,7 @@ export default function CheckPage() {
   }
 
   async function confirmCheckTasks() {
-    if (!uid || !activeGroupId) return;
+    if (!accessToken || !activeGroupId) return;
     if (tasks.length === 0) {
       setConfirmStatus("No tasks to update.");
       return;
@@ -106,7 +109,7 @@ export default function CheckPage() {
     try {
       setConfirming(true);
       setConfirmStatus(null);
-      await ConfirmMyGroupCheckTasks(uid, activeGroupId, tasks);
+      await ConfirmMyGroupCheckTasks(accessToken, activeGroupId, tasks);
       setConfirmStatus("Checked tasks updated.");
     } catch (e: unknown) {
       setConfirmStatus(e instanceof Error ? e.message : "Update failed");
@@ -115,12 +118,12 @@ export default function CheckPage() {
     }
   }
 
-  if (liff_loading || (!!uid && (!roleChecked || (isManager && activeGroupId && (loading || !loaded))))) {
+  if (liff_loading || (!!accessToken && (!roleChecked || (isManager && activeGroupId && (loading || !loaded))))) {
     return <PageMessage title="Loading..." detail="Preparing tasks to check" />;
   }
 
-  if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (!isManager) {

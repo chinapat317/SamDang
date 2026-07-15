@@ -1,14 +1,17 @@
 "use client";
 
 import { GetGroupInfo } from "@/commonFunc/group";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { GetMyGroupShowTasks } from "@/commonFunc/task";
-import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
-import { LiffProf, TaskCanEditItem } from "@/types/types";
+import { useLiffSession } from "@/lib/liff-session";
+import { TaskCanEditItem } from "@/types/types";
 import { ReactNode, useEffect, useState } from "react";
 
 export default function ShowTasksPage() {
-  const { uid, liff_loading } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const { selectedGroup } = useMyGroup();
   const [tasks, setTasks] = useState<TaskCanEditItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -30,7 +33,7 @@ export default function ShowTasksPage() {
     "Group";
 
   useEffect(() => {
-    if (!uid || !activeGroupId) return;
+    if (!activeGroupId) return;
 
     let cancelled = false;
 
@@ -39,9 +42,9 @@ export default function ShowTasksPage() {
         setLoading(true);
         setLoaded(false);
         setErrMsg(null);
-        const groupTasks = await GetMyGroupShowTasks(uid, activeGroupId);
+        const groupTasks = await GetMyGroupShowTasks(accessToken, activeGroupId);
         try {
-          const groupInfo = await GetGroupInfo(activeGroupId);
+          const groupInfo = await GetGroupInfo(accessToken, activeGroupId);
           if (!cancelled) {
             setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
           }
@@ -63,14 +66,14 @@ export default function ShowTasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeGroupId, uid]);
+  }, [accessToken, activeGroupId]);
 
-  if (liff_loading || (!!uid && !!activeGroupId && (loading || !loaded))) {
+  if (liff_loading || (!!activeGroupId && (loading || !loaded))) {
     return <PageMessage title="Loading..." detail="Preparing tasks" />;
   }
 
-  if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (!activeGroupId) {

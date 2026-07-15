@@ -8,7 +8,8 @@ export type GroupInfo = {
 };
 
 export type ListUsers = {
-  userId: string;
+  userId?: string;
+  user_hash?: string;
   display_name: string;
   picture_url: string;
 };
@@ -44,12 +45,4 @@ export type TaskCanEditItem = {
   description: string;
   due_date: string;
   checked: boolean;
-};
-
-export type LiffProf = {
-  uid: string;
-  pictureUrl: string;
-  liff_loading: boolean;
-  displayName: string;
-  error: string | null;
 };

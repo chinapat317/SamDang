@@ -1,19 +1,27 @@
 "use client";
 
-type LiffProfile = {
-  userId?: string;
+export type LiffProf = {
+  pictureUrl: string;
+  liff_loading: boolean;
+  displayName: string;
+  accessToken: string;
+  error: string | null;
+};
+
+export type LiffProfile = {
   displayName?: string;
   pictureUrl?: string;
 };
 
-type LiffSdk = {
+export type LiffSdk = {
   init: (options: { liffId: string }) => Promise<void>;
   isLoggedIn: () => boolean;
   login: (options?: { redirectUri?: string }) => void;
   getProfile: () => Promise<LiffProfile>;
+  getAccessToken: () => string | null;
 };
 
-type LiffWindow = Window & {
+export type LiffWindow = Window & {
   liff?: LiffSdk;
 };
 

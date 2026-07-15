@@ -3,7 +3,6 @@ package dbmanage
 type TaskAssignItem struct {
 	GroupID     string `json:"group_id"`
 	AssignedTo  string `json:"assigned_to_line_display_name"`
-	AssignedBy  string `json:"assigned_by_line_display_name"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	AssignDate  string `json:"assign_date"`

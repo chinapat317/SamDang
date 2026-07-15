@@ -1,10 +1,11 @@
+import { GetSelectedUserHash } from "@/commonFunc/group";
 import { TaskRow } from "@/types/types";
 import { Dispatch, SetStateAction } from "react";
 
 type AssignTasksParams = {
   groupId: string | null | undefined;
+  groupMemJson: unknown;
   taskRows: TaskRow[];
-  currentUserName: string;
   setAssignStatus: Dispatch<SetStateAction<string | null>>;
   setAssigning: Dispatch<SetStateAction<boolean>>;
 };
@@ -12,7 +13,6 @@ type AssignTasksParams = {
 type AssignPayloadItem = {
   group_id: string;
   assigned_to_line_display_name: string;
-  assigned_by_line_display_name: string;
   title: string;
   description: string;
   assign_date: string;
@@ -57,10 +57,10 @@ export function updateTaskRow(
   setTaskRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
 }
 
-export async function assignTasks({
+export async function assignTasks(accessToken: string, {
   groupId,
+  groupMemJson,
   taskRows,
-  currentUserName,
   setAssignStatus,
   setAssigning,
 }: AssignTasksParams): Promise<boolean> {
@@ -81,6 +81,10 @@ export async function assignTasks({
       setAssignStatus(`Row ${i + 1}: please select "assigned to"`);
       return false;
     }
+    if (!GetSelectedUserHash(groupMemJson, r.assignedToName)) {
+      setAssignStatus(`Row ${i + 1}: selected member has no user hash`);
+      return false;
+    }
     if (!r.task || r.task.trim() === "") {
       setAssignStatus(`Row ${i + 1}: task cannot be empty`);
       return false;
@@ -95,8 +99,7 @@ export async function assignTasks({
   taskRows.forEach((r, idx) => {
     payload[String(idx + 1)] = {
       group_id: groupId,
-      assigned_to_line_display_name: r.assignedToName,
-      assigned_by_line_display_name: currentUserName,
+      assigned_to_line_display_name: GetSelectedUserHash(groupMemJson, r.assignedToName),
       title: r.task,
       description: r.description,
       assign_date: r.assignDateISO,
@@ -108,7 +111,9 @@ export async function assignTasks({
     setAssigning(true);
     const res = await fetch("/front-api/post/tasks/assign", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", 
+        "authorization": `Bearer ${accessToken}`
+      },
       body: JSON.stringify(payload),
     });
 

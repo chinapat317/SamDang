@@ -1,24 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSetLiffProf } from "@/context/LiffProf";
-import { getLiffId, initLiff } from "@/lib/liff";
+import { getLiffId, initLiff } from "@/types/liff";
+import { beginLiffSessionAuth, clearLiffSession, setLiffSession } from "@/lib/liff-session";
 
 let liffLoginStarted = false;
 
 export default function LiffBootstrap() {
-  const setProf = useSetLiffProf();
-
   useEffect(() => {
     let cancelled = false;
 
     async function run() {
       try {
-        setProf((p) => ({ ...p, liff_loading: true, error: null }));
-
+        beginLiffSessionAuth();
         const liff = await initLiff(getLiffId());
 
         if (!liff.isLoggedIn()) {
+          clearLiffSession(null, true);
           if (!liffLoginStarted) {
             liffLoginStarted = true;
             liff.login({ redirectUri: window.location.href });
@@ -27,27 +25,26 @@ export default function LiffBootstrap() {
         }
 
         const profile = await liff.getProfile();
+        const displayName = profile.displayName || "";
+        const pictureUrl = profile.pictureUrl || "";
+        const accessToken = liff.getAccessToken();
 
-        const uid = String(profile.userId || "");
-        const displayName = String(profile.displayName || "");
-        const pictureUrl = String(profile.pictureUrl || "");
+        if (!accessToken) {
+          throw new Error("LIFF access token is unavailable");
+        }
 
         if (cancelled) return;
 
-        setProf({
-          uid,
+        const session = {
           displayName,
           pictureUrl,
-          liff_loading: false,
-          error: null,
-        });
+          accessToken,
+        };
+
+        setLiffSession(session);
       } catch (e: unknown) {
         if (cancelled) return;
-        setProf((p) => ({
-          ...p,
-          liff_loading: false,
-          error: e instanceof Error ? e.message : "LIFF error",
-        }));
+        clearLiffSession(e instanceof Error ? e.message : "LIFF error");
       }
     }
 
@@ -55,7 +52,7 @@ export default function LiffBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [setProf]);
+  }, []);
 
   return null;
 }

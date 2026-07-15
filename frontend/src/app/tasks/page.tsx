@@ -1,9 +1,10 @@
 "use client";
 
 import { GetGroupInfo, GetMyGroups } from "@/commonFunc/group";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { CheckRole } from "@/commonFunc/user";
-import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
+import { useLiffSession } from "@/lib/liff-session";
 import { GroupInfo } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -24,7 +25,9 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
 
 export default function TasksPage() {
   const router = useRouter();
-  const { uid, liff_loading, error: liffError } = useLiffProf();
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading, error: liffError } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const { groups, setGroups, setSelectedGroup } = useMyGroup();
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,7 +53,7 @@ export default function TasksPage() {
   );
 
   useEffect(() => {
-    if (!uid) return;
+    if (!accessToken) return;
 
     let cancelled = false;
 
@@ -58,7 +61,7 @@ export default function TasksPage() {
       try {
         setLoading(true);
         setErrMsg(null);
-        const myGroups = await GetMyGroups(uid);
+        const myGroups = await GetMyGroups(accessToken);
         if (cancelled) return;
 
         setGroups(myGroups);
@@ -73,16 +76,16 @@ export default function TasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [setGroups, uid]);
+  }, [accessToken, setGroups]);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!accessToken) return;
 
     let cancelled = false;
 
     async function loadManagerRole() {
       try {
-        const allowed = await CheckRole(uid, ["manager", "admin"]);
+        const allowed = await CheckRole(accessToken, ["manager", "admin"]);
         if (!cancelled) setIsManager(allowed);
       } catch {
         if (!cancelled) setIsManager(false);
@@ -93,7 +96,7 @@ export default function TasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [accessToken]);
 
   async function prepareSelectedGroup() {
     if (!selectedGroup) {
@@ -103,7 +106,7 @@ export default function TasksPage() {
 
     try {
       setErrMsg(null);
-      const selectedGroupInfo = await GetGroupInfo(selectedGroup.group_id);
+      const selectedGroupInfo = await GetGroupInfo(accessToken, selectedGroup.group_id);
       setSelectedGroup({
         ...selectedGroup,
         ...selectedGroupInfo,
@@ -177,17 +180,12 @@ export default function TasksPage() {
     return <PageMessage title="Loading..." detail="Preparing your groups" />;
   }
 
-  if (liffError) {
-    return <PageMessage title="Failed to authenticate" detail={liffError} />;
+  if (!hasLiffSession) {
+    return null;
   }
 
-  if (!uid) {
-    return (
-      <PageMessage
-        title="Failed to authenticate"
-        detail="Please open this page from LINE LIFF again."
-      />
-    );
+  if (liffError) {
+    return <PageMessage title="Failed to authenticate" detail={liffError} />;
   }
 
   if (errMsg) {

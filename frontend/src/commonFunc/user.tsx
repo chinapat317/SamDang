@@ -1,10 +1,12 @@
 import { EditUserRole, Users } from "@/types/types";
 
-export async function GetAllUsers(uid: string): Promise<Users[]> {
+export async function GetAllUsers(accessToken: string): Promise<Users[]> {
   const res = await fetch("/front-api/post/admin/users", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid }),
+    headers: {
+      "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
+    },
   });
 
   if (!res.ok) {
@@ -22,11 +24,14 @@ export async function GetAllUsers(uid: string): Promise<Users[]> {
   throw new Error("Invalid response format from backend");
 }
 
-export async function GetUsersByRole(uid: string, role: string[]): Promise<Users[]> {
+export async function GetUsersByRole(accessToken: string, role: string[]): Promise<Users[]> {
   const res = await fetch("/front-api/post/admin/users/role", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid, role }),
+    headers: {
+      "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ role }),
   });
 
   if (!res.ok) {
@@ -44,11 +49,14 @@ export async function GetUsersByRole(uid: string, role: string[]): Promise<Users
   throw new Error("Invalid response format from backend");
 }
 
-export async function UpdateUsersRole(uid: string, users: EditUserRole[]): Promise<void> {
+export async function UpdateUsersRole(accessToken: string, users: EditUserRole[]): Promise<void> {
   const res = await fetch("/front-api/post/admin/edit/users/confirm", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid, users }),
+    headers: {
+      "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ users }),
   });
 
   if (!res.ok) {
@@ -60,11 +68,14 @@ export async function UpdateUsersRole(uid: string, users: EditUserRole[]): Promi
   }
 }
 
-export async function CheckRole(uid: string, role: string[]): Promise<boolean> {
+export async function CheckRole(accessToken: string, role: string[]): Promise<boolean> {
   const res = await fetch("/front-api/post/checkrole", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid, role }),
+    headers: {
+      "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ role }),
   });
 
   if (!res.ok) {

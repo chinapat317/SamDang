@@ -17,17 +17,21 @@ import (
 
 func CheckRoleHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UIDnRoleReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req RoleReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "CheckRoleHandler: invalid json body")
 			return
 		}
-		req.UID = strings.TrimSpace(req.UID)
-		if req.UID == "" {
-			c.String(http.StatusBadRequest, "CheckRoleHandler: uid is required")
+		if len(req.ROLE) == 0 {
+			c.String(http.StatusBadRequest, "CheckRoleHandler: role is required")
 			return
 		}
-		isAllowed, err := dbmanage.CheckUserRole(req.UID, db, req.ROLE)
+		isAllowed, err := dbmanage.CheckUserRole(uid, db, req.ROLE)
 		if err != nil {
 			log.Printf("CheckRoleHandler: failed to check user role: %v\n", err)
 			c.String(http.StatusInternalServerError, "CheckRoleHandler: failed to check user role")
@@ -41,19 +45,12 @@ func CheckRoleHandler(db *sql.DB) gin.HandlerFunc {
 
 func ProfHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UIDReq
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.String(http.StatusBadRequest, "ProfReq: invalid json body")
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
 			return
 		}
 
-		req.UID = strings.TrimSpace(req.UID)
-		if req.UID == "" {
-			c.String(http.StatusBadRequest, "ProfHandler: uid is required")
-			return
-		}
-
-		name, pic, isErr := dbmanage.GetUserProf(req.UID, db)
+		name, pic, isErr := dbmanage.GetUserProf(uid, db)
 		if isErr {
 			log.Println("GetUserProf error: failed to get profile")
 			c.String(http.StatusInternalServerError, "ProfHandler: failed to get profile")
@@ -69,6 +66,10 @@ func ProfHandler(db *sql.DB) gin.HandlerFunc {
 
 func GroupInfoHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if _, ok := lineUserIDFromRequest(c); !ok {
+			return
+		}
+
 		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "GroupReq: invalid json body")
@@ -107,16 +108,20 @@ func GroupInfoHandler(db *sql.DB) gin.HandlerFunc {
 
 func CheckUserInGroupHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UserGroupReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "CheckUserInGroupHandler: invalid json body")
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
 		gid := strings.TrimSpace(req.GID)
-		if uid == "" || gid == "" {
-			c.String(http.StatusBadRequest, "CheckUserInGroupHandler: uid and gid are required")
+		if gid == "" {
+			c.String(http.StatusBadRequest, "CheckUserInGroupHandler: gid is required")
 			return
 		}
 		log.Printf("CheckUserInGroupHandler uid=%s gid=%s", uid, gid)
@@ -136,15 +141,8 @@ func CheckUserInGroupHandler(db *sql.DB) gin.HandlerFunc {
 
 func MyGroupsHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UIDReq
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.String(http.StatusBadRequest, "MyGroupsHandler: invalid json body")
-			return
-		}
-
-		uid := strings.TrimSpace(req.UID)
-		if uid == "" {
-			c.String(http.StatusBadRequest, "MyGroupsHandler: uid is required")
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
 			return
 		}
 
@@ -161,14 +159,8 @@ func MyGroupsHandler(db *sql.DB) gin.HandlerFunc {
 
 func GetAllUsersHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UIDReq
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.String(http.StatusBadRequest, "GetAllUsersHandler: invalid json body")
-			return
-		}
-		uid := strings.TrimSpace(req.UID)
-		if uid == "" {
-			c.String(http.StatusBadRequest, "GetAllUsersHandler: uid is required")
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
 			return
 		}
 		isAdmin, err := dbmanage.CheckUserRole(uid, db, []string{"admin"})
@@ -193,15 +185,14 @@ func GetAllUsersHandler(db *sql.DB) gin.HandlerFunc {
 
 func UpdateUsersRoleHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UpdateUsersRoleReq
-		if err := c.ShouldBindJSON(&req); err != nil {
-			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: invalid json body")
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
-		if uid == "" {
-			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: uid is required")
+		var req UpdateUsersRoleReq
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.String(http.StatusBadRequest, "UpdateUsersRoleHandler: invalid json body")
 			return
 		}
 
@@ -244,11 +235,12 @@ func getGroupMembers(db *sql.DB, gid string) (map[string]MemberInfo, error) {
 	out := make(map[string]MemberInfo)
 	i := 1
 	for rows.Next() {
-		var name, pic sql.NullString
-		if err := rows.Scan(&name, &pic); err != nil {
+		var name, pic, userHash sql.NullString
+		if err := rows.Scan(&name, &pic, &userHash); err != nil {
 			return nil, err
 		}
 		out[strconv.Itoa(i)] = MemberInfo{
+			UserHash:    userHash.String,
 			DisplayName: name.String,
 			PictureURL:  pic.String,
 		}
@@ -262,6 +254,11 @@ func getGroupMembers(db *sql.DB, gid string) (map[string]MemberInfo, error) {
 
 func TaskAssignHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
 		var req TaskAssignRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "TaskAssignHandler: invalid json body")
@@ -274,7 +271,7 @@ func TaskAssignHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		for key, task := range req {
-			if err := dbmanage.AssignTask(db, task); err != nil {
+			if err := dbmanage.AssignTask(db, uid, task); err != nil {
 				log.Printf("TaskAssignHandler: AssignTask failed at key=%s: %v\n", key, err)
 				c.String(http.StatusInternalServerError, "TaskAssignHandler: failed to assign task")
 				return
@@ -287,15 +284,19 @@ func TaskAssignHandler(db *sql.DB) gin.HandlerFunc {
 
 func EditGroupShow(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UserGroupReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "EditGroupShow: invalid json body")
 			return
 		}
-		uid := strings.TrimSpace(req.UID)
 		gid := strings.TrimSpace(req.GID)
-		if uid == "" || gid == "" {
-			c.String(http.StatusBadRequest, "EditGroupShow: uid and gid are required")
+		if gid == "" {
+			c.String(http.StatusBadRequest, "EditGroupShow: gid is required")
 			return
 		}
 		myGroupTasks, err := dbmanage.MyGroupTasks(db, uid, gid)
@@ -310,16 +311,20 @@ func EditGroupShow(db *sql.DB) gin.HandlerFunc {
 
 func ShowGroupTasks(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UserGroupReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "ShowGroupTasks: invalid json body")
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
 		gid := strings.TrimSpace(req.GID)
-		if uid == "" || gid == "" {
-			c.String(http.StatusBadRequest, "ShowGroupTasks: uid and gid are required")
+		if gid == "" {
+			c.String(http.StatusBadRequest, "ShowGroupTasks: gid is required")
 			return
 		}
 
@@ -336,17 +341,17 @@ func ShowGroupTasks(db *sql.DB) gin.HandlerFunc {
 
 func GetUsersByRoleHandler(db *sql.DB, role []string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UIDnRoleReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req RoleReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: invalid json body")
 			return
 		}
-		uid := strings.TrimSpace(req.UID)
 		filterRole := req.ROLE
-		if uid == "" {
-			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: uid is required")
-			return
-		}
 		if len(filterRole) == 0 {
 			c.String(http.StatusBadRequest, "GetUsersByRoleHandler: role is required")
 			return
@@ -375,16 +380,20 @@ func GetUsersByRoleHandler(db *sql.DB, role []string) gin.HandlerFunc {
 
 func EditGroupConfirm(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
 		var req TaskEditRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "EditGroupConfirm: invalid json body")
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
 		gid := strings.TrimSpace(req.GID)
-		if uid == "" || gid == "" {
-			c.String(http.StatusBadRequest, "EditGroupConfirm: uid and gid are required")
+		if gid == "" {
+			c.String(http.StatusBadRequest, "EditGroupConfirm: gid is required")
 			return
 		}
 		if len(req.Tasks) == 0 {
@@ -404,17 +413,17 @@ func EditGroupConfirm(db *sql.DB) gin.HandlerFunc {
 
 func CheckGroupConfirm(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
 		var req TaskCheckRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "CheckGroupConfirm: invalid json body")
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
-		if uid == "" {
-			c.String(http.StatusBadRequest, "CheckGroupConfirm: uid is required")
-			return
-		}
 		if len(req.Tasks) == 0 {
 			c.String(http.StatusBadRequest, "CheckGroupConfirm: no tasks")
 			return
@@ -432,16 +441,20 @@ func CheckGroupConfirm(db *sql.DB) gin.HandlerFunc {
 
 func GetGroupDoneTasks(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req UserGroupReq
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
+			return
+		}
+
+		var req GIDReq
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.String(http.StatusBadRequest, "GetGroupDoneTasks: invalid json body")
 			return
 		}
 
-		uid := strings.TrimSpace(req.UID)
 		gid := strings.TrimSpace(req.GID)
-		if uid == "" || gid == "" {
-			c.String(http.StatusBadRequest, "GetGroupDoneTasks: uid and gid are required")
+		if gid == "" {
+			c.String(http.StatusBadRequest, "GetGroupDoneTasks: gid is required")
 			return
 		}
 

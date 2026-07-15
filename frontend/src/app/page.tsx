@@ -1,38 +1,50 @@
 "use client";
 
-import { useLiffProf } from "@/context/LiffProf";
-import { getLiffId, initLiff } from "@/lib/liff";
-import { useEffect, useState } from "react";
+import { useLiffSession } from "@/lib/liff-session";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 export default function HomePage() {
-  const { error } = useLiffProf();
-  const [initError, setInitError] = useState<string | null>(null);
+  return (
+    <Suspense fallback={<PageMessage title="Loading..." detail="Preparing LINE profile" />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
 
-  useEffect(() => {
-    if (error) return;
+function HomeContent() {
+  const { accessToken, displayName, liff_loading, error } = useLiffSession();
+  const searchParams = useSearchParams();
+  const authFailed = searchParams.get("auth") === "failed";
 
-    let cancelled = false;
-
-    async function initializeLiff() {
-      try {
-        await initLiff(getLiffId());
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setInitError(e instanceof Error ? e.message : "LIFF error");
-      }
-    }
-
-    initializeLiff();
-    return () => {
-      cancelled = true;
-    };
-  }, [error]);
-
-  if (error || initError) {
-    return <PageMessage title="Failed to authenticate" detail={error || initError || ""} />;
+  if (authFailed || error) {
+    return (
+      <PageMessage
+        title="Failed to authenticate"
+        detail={error || "Please open this page from LINE LIFF again."}
+      />
+    );
   }
 
-  return <PageMessage title="Loading..." detail="Preparing LINE profile" />;
+  if (liff_loading) {
+    return <PageMessage title="Loading..." detail="Preparing LINE profile" />;
+  }
+
+  if (!accessToken) {
+    return (
+      <PageMessage
+        title="Failed to authenticate"
+        detail="Please open this page from LINE LIFF again."
+      />
+    );
+  }
+
+  return (
+    <PageMessage
+      title="Ready"
+      detail={`Authenticated as ${displayName || "LINE user"}`}
+    />
+  );
 }
 
 function PageMessage({ title, detail }: { title: string; detail: string }) {

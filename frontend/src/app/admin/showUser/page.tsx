@@ -1,8 +1,9 @@
 "use client";
 
 import { GetAllUsers } from "@/commonFunc/user";
-import { useLiffProf } from "@/context/LiffProf";
-import { LiffProf, Users } from "@/types/types";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
+import { useLiffSession } from "@/lib/liff-session";
+import { Users } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
@@ -18,14 +19,16 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
 
 export default function AdminShowUserPage() {
   const router = useRouter();
-  const { uid, liff_loading } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const [users, setUsers] = useState<Users[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!uid) return;
+    if (!accessToken) return;
 
     let cancelled = false;
 
@@ -34,7 +37,7 @@ export default function AdminShowUserPage() {
         setLoading(true);
         setLoaded(false);
         setErrMsg(null);
-        const adminUsers = await GetAllUsers(uid);
+        const adminUsers = await GetAllUsers(accessToken);
         if (!cancelled) {
           setUsers(adminUsers);
           setLoaded(true);
@@ -52,14 +55,14 @@ export default function AdminShowUserPage() {
     return () => {
       cancelled = true;
     };
-  }, [uid]);
+  }, [accessToken]);
 
-  if (liff_loading || (!!uid && (loading || !loaded) && !errMsg)) {
+  if (liff_loading || (!!accessToken && (loading || !loaded) && !errMsg)) {
     return <PageMessage title="Loading..." detail="Checking admin role" />;
   }
 
-  if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (errMsg) {

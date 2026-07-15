@@ -1,14 +1,14 @@
 "use client";
 
 import LiffBootstrap from "@/components/LiffBootstrap";
-import { useLiffProf } from "@/context/LiffProf";
+import { useLiffSession } from "@/lib/liff-session";
 
 type TopBarProps = {
   title?: string;
 };
 
 export default function TopBar({ title = "SamDang" }: TopBarProps) {
-  const { displayName, pictureUrl, liff_loading } = useLiffProf();
+  const { displayName, pictureUrl, liff_loading } = useLiffSession();
 
   return (
     <header

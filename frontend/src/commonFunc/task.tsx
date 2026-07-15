@@ -1,12 +1,13 @@
 import { TaskCanEditItem } from "@/types/types";
 
-export async function GetMyGroupDoneTasks(uid: string, gid: string): Promise<TaskCanEditItem[]> {
+export async function GetMyGroupDoneTasks(accessToken: string, gid: string): Promise<TaskCanEditItem[]> {
   const res = await fetch("/front-api/post/tasks/group/done", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ uid, gid }),
+    body: JSON.stringify({ gid }),
   });
 
   if (!res.ok) {
@@ -22,13 +23,14 @@ export async function GetMyGroupDoneTasks(uid: string, gid: string): Promise<Tas
   throw new Error("Invalid response format from backend");
 }
 
-export async function GetMyGroupTasks(uid: string, gid: string): Promise<TaskCanEditItem[]> {
+export async function GetMyGroupTasks(accessToken: string, gid: string): Promise<TaskCanEditItem[]> {
   const res = await fetch("/front-api/post/tasks/edit/group", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ uid, gid }),
+    body: JSON.stringify({ gid }),
   });
 
   if (!res.ok) {
@@ -44,13 +46,14 @@ export async function GetMyGroupTasks(uid: string, gid: string): Promise<TaskCan
   throw new Error("Invalid response format from backend");
 }
 
-export async function GetMyGroupShowTasks(uid: string, gid: string): Promise<TaskCanEditItem[]> {
+export async function GetMyGroupShowTasks(accessToken: string, gid: string): Promise<TaskCanEditItem[]> {
   const res = await fetch("/front-api/post/tasks/show/group", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ uid, gid }),
+    body: JSON.stringify({ gid }),
   });
 
   if (!res.ok) {
@@ -67,7 +70,7 @@ export async function GetMyGroupShowTasks(uid: string, gid: string): Promise<Tas
 }
 
 export async function ConfirmMyGroupTasks(
-  uid: string,
+  accessToken: string,
   gid: string,
   tasks: TaskCanEditItem[],
 ): Promise<void> {
@@ -75,9 +78,9 @@ export async function ConfirmMyGroupTasks(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      uid,
       gid,
       tasks: tasks.map((task) => ({
         id: task.id,
@@ -95,7 +98,7 @@ export async function ConfirmMyGroupTasks(
 }
 
 export async function ConfirmMyGroupCheckTasks(
-  uid: string,
+  accessToken: string,
   gid: string,
   tasks: TaskCanEditItem[],
 ): Promise<void> {
@@ -103,10 +106,9 @@ export async function ConfirmMyGroupCheckTasks(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
-      uid,
-      gid,
       tasks: tasks.map((task) => ({
         id: task.id,
         status: task.status,

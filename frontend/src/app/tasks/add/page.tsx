@@ -5,9 +5,10 @@ import {
   GetSelectedPic,
   MemberList,
 } from "@/commonFunc/group";
-import { useLiffProf } from "@/context/LiffProf";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { useMyGroup } from "@/context/MyGroup";
-import { GroupInfo, LiffProf, TaskRow } from "@/types/types";
+import { useLiffSession } from "@/lib/liff-session";
+import { GroupInfo, TaskRow } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 import {
@@ -28,15 +29,17 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
   router.push(path);
 }
 
-function addDraftKey(uid: string, groupId: string) {
-  return `samdang.tasks.add.${uid}.${groupId}`;
+function addDraftKey(groupId: string) {
+  return `samdang.tasks.add.${groupId}`;
 }
 
 export default function AddWork() {
   const router = useRouter();
-  const { uid, liff_loading, displayName } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, displayName, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const { selectedGroup, setSelectedGroup } = useMyGroup();
-  const currentUserName = displayName || uid || "Unknown";
+  const currentUserName = displayName || "Unknown";
   const [taskRows, setTaskRows] = useState<TaskRow[]>([]);
   const [assignStatus, setAssignStatus] = useState<string | null>(null);
   const [assigning, setAssigning] = useState(false);
@@ -60,10 +63,10 @@ export default function AddWork() {
   const activeGroupId = selectedGroup?.group_id || selectedGroupFromUrl.id || "";
 
   useEffect(() => {
-    if (!uid || !activeGroupId) return;
+    if (!activeGroupId) return;
 
     const timer = window.setTimeout(() => {
-      const key = addDraftKey(uid, activeGroupId);
+      const key = addDraftKey(activeGroupId);
       const savedDraft = window.localStorage.getItem(key);
       if (!savedDraft) {
         setLoadedDraftKey(key);
@@ -83,19 +86,19 @@ export default function AddWork() {
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [activeGroupId, uid]);
+  }, [activeGroupId]);
 
   useEffect(() => {
-    if (!uid || !activeGroupId) return;
+    if (!activeGroupId) return;
 
-    const key = addDraftKey(uid, activeGroupId);
+    const key = addDraftKey(activeGroupId);
     if (loadedDraftKey !== key) return;
 
     window.localStorage.setItem(key, JSON.stringify(taskRows));
-  }, [activeGroupId, loadedDraftKey, taskRows, uid]);
+  }, [activeGroupId, loadedDraftKey, taskRows]);
 
   useEffect(() => {
-    if (!activeGroupId || !uid) return;
+    if (!activeGroupId) return;
     if (selectedGroup?.group_id === activeGroupId && MemberList(selectedGroup).length > 0) return;
 
     let cancelled = false;
@@ -105,7 +108,7 @@ export default function AddWork() {
         setLoading(true);
         setGroupDataLoaded(false);
         setErrMsg(null);
-        const groupInfo = await GetGroupInfo(activeGroupId);
+        const groupInfo = await GetGroupInfo(accessToken, activeGroupId);
         if (!cancelled) {
           setGroupMemJson(groupInfo);
           setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
@@ -123,18 +126,18 @@ export default function AddWork() {
     return () => {
       cancelled = true;
     };
-  }, [activeGroupId, selectedGroup, setSelectedGroup, uid]);
+  }, [accessToken, activeGroupId, selectedGroup, setSelectedGroup]);
 
-  if (liff_loading || (!!activeGroupId && !!uid && (loading || !groupDataLoaded))) {
+  if (liff_loading || (!!activeGroupId && (loading || !groupDataLoaded))) {
     return <LoadingScreen />;
+  }
+
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (errMsg) {
     return <PageMessage>{errMsg}</PageMessage>;
-  }
-
-  if (!uid) {
-    return <PageMessage>Cannot load LINE profile. Please open this page from LINE LIFF again.</PageMessage>;
   }
 
   const groupName =
@@ -268,15 +271,15 @@ export default function AddWork() {
         <button
           type="button"
           onClick={async () => {
-            const assigned = await assignTasks({
+            const assigned = await assignTasks(accessToken, {
               groupId: activeGroupId,
+              groupMemJson,
               taskRows,
-              currentUserName,
               setAssignStatus,
               setAssigning,
             });
             if (assigned) {
-              window.localStorage.removeItem(addDraftKey(uid, activeGroupId));
+              window.localStorage.removeItem(addDraftKey(activeGroupId));
               navigateInFrontend(router, "/tasks?assigned=1");
             }
           }}

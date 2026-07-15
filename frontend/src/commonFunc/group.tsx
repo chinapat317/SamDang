@@ -1,9 +1,11 @@
 import { GroupInfo, ListUsers } from "@/types/types";
 
-export async function GetGroupInfo(gid: string): Promise<GroupInfo> {
+export async function GetGroupInfo(accessToken: string, gid: string): Promise<GroupInfo> {
   const res = await fetch("/front-api/post/ginfo", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+      "authorization": `Bearer ${accessToken}`
+     },
     body: JSON.stringify({ gid }),
   });
   if (!res.ok) {
@@ -43,13 +45,19 @@ export function GetSelectedPic(groupMemJson: unknown, selectedName: string): str
   return member ? member.picture_url : "";
 }
 
-export async function GetMyGroups(uid: string): Promise<GroupInfo[]> {  
+export function GetSelectedUserHash(groupMemJson: unknown, selectedName: string): string {
+  const members = MemberList(groupMemJson);
+  const member = members.find((m) => m.display_name === selectedName);
+  return member?.user_hash || member?.userId || "";
+}
+
+export async function GetMyGroups(accessToken: string): Promise<GroupInfo[]> {  
     const res = await fetch("/front-api/post/my_groups", {
         method: "POST",
         headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "authorization": `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ uid })
     });
     if (!res.ok) {
       const text = await res.text();

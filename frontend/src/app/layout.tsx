@@ -1,5 +1,4 @@
 import TopBar from "@/components/TopBar";
-import { LiffProfProvider } from "@/context/LiffProf";
 import { MyGroupProvider } from "@/context/MyGroup";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -16,22 +15,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             'Arial, "Helvetica Neue", Helvetica, system-ui, -apple-system, sans-serif',
         }}
       >
-        <LiffProfProvider>
-          <MyGroupProvider>
-            <TopBar title="SamDang" />
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 1180,
-                margin: "0 auto",
-                padding: "clamp(12px, 3vw, 20px)",
-                boxSizing: "border-box",
-              }}
-            >
-              {children}
-            </div>
-          </MyGroupProvider>
-        </LiffProfProvider>
+        <MyGroupProvider>
+          <TopBar title="SamDang" />
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 1180,
+              margin: "0 auto",
+              padding: "clamp(12px, 3vw, 20px)",
+              boxSizing: "border-box",
+            }}
+          >
+            {children}
+          </div>
+        </MyGroupProvider>
       </body>
     </html>
   );

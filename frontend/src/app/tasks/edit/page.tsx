@@ -1,10 +1,11 @@
 "use client";
 
 import { GetGroupInfo } from "@/commonFunc/group";
+import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { ConfirmMyGroupTasks, GetMyGroupTasks } from "@/commonFunc/task";
-import { useLiffProf } from "@/context/LiffProf";
 import { useMyGroup } from "@/context/MyGroup";
-import { LiffProf, TaskCanEditItem } from "@/types/types";
+import { useLiffSession } from "@/lib/liff-session";
+import { TaskCanEditItem } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
@@ -18,13 +19,15 @@ function navigateInFrontend(router: { push: (path: string) => void }, path: stri
   router.push(path);
 }
 
-function editDraftKey(uid: string, groupId: string) {
-  return `samdang.tasks.edit.${uid}.${groupId}`;
+function editDraftKey(groupId: string) {
+  return `samdang.tasks.edit.${groupId}`;
 }
 
 export default function EditTasksPage() {
   const router = useRouter();
-  const { uid, liff_loading } = useLiffProf() as LiffProf;
+  const liffSession = useLiffSession();
+  const { accessToken, liff_loading } = liffSession;
+  const hasLiffSession = useRequireLiffSession(liffSession);
   const { selectedGroup } = useMyGroup();
   const [tasks, setTasks] = useState<TaskCanEditItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +52,7 @@ export default function EditTasksPage() {
     "Group";
 
   useEffect(() => {
-    if (!uid || !activeGroupId) return;
+    if (!activeGroupId) return;
 
     let cancelled = false;
 
@@ -58,9 +61,9 @@ export default function EditTasksPage() {
         setLoading(true);
         setLoaded(false);
         setErrMsg(null);
-        const myTasks = await GetMyGroupTasks(uid, activeGroupId);
+        const myTasks = await GetMyGroupTasks(accessToken, activeGroupId);
         try {
-          const groupInfo = await GetGroupInfo(activeGroupId);
+          const groupInfo = await GetGroupInfo(accessToken, activeGroupId);
           if (!cancelled) {
             setGroupNameJson(groupInfo.group_name ?? groupInfo.line_group_name);
           }
@@ -68,7 +71,7 @@ export default function EditTasksPage() {
           // Keep task editing available even if the group display name cannot be refreshed.
         }
         if (!cancelled) {
-          const key = editDraftKey(uid, activeGroupId);
+          const key = editDraftKey(activeGroupId);
           const savedDraft = window.localStorage.getItem(key);
           if (savedDraft) {
             try {
@@ -95,16 +98,16 @@ export default function EditTasksPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeGroupId, uid]);
+  }, [accessToken, activeGroupId]);
 
   useEffect(() => {
-    if (!uid || !activeGroupId || !loaded) return;
+    if (!activeGroupId || !loaded) return;
 
-    const key = editDraftKey(uid, activeGroupId);
+    const key = editDraftKey(activeGroupId);
     if (loadedDraftKey !== key) return;
 
     window.localStorage.setItem(key, JSON.stringify(tasks));
-  }, [activeGroupId, loaded, loadedDraftKey, tasks, uid]);
+  }, [activeGroupId, loaded, loadedDraftKey, tasks]);
 
   function updateTask(index: number, patch: Partial<TaskCanEditItem>) {
     setTasks((current) =>
@@ -113,7 +116,7 @@ export default function EditTasksPage() {
   }
 
   async function confirmEditTasks() {
-    if (!uid || !activeGroupId) return;
+    if (!activeGroupId) return;
     if (tasks.length === 0) {
       setConfirmStatus("No tasks to update.");
       return;
@@ -122,8 +125,8 @@ export default function EditTasksPage() {
     try {
       setConfirming(true);
       setConfirmStatus(null);
-      await ConfirmMyGroupTasks(uid, activeGroupId, tasks);
-      window.localStorage.removeItem(editDraftKey(uid, activeGroupId));
+      await ConfirmMyGroupTasks(liffSession.accessToken, activeGroupId, tasks);
+      window.localStorage.removeItem(editDraftKey(activeGroupId));
       navigateInFrontend(router, "/tasks?edited=1");
     } catch (e: unknown) {
       setConfirmStatus(e instanceof Error ? e.message : "Update failed");
@@ -132,12 +135,12 @@ export default function EditTasksPage() {
     }
   }
 
-  if (liff_loading || (!!uid && !!activeGroupId && (loading || !loaded))) {
+  if (liff_loading || (!!activeGroupId && (loading || !loaded))) {
     return <PageMessage title="Loading..." detail="Preparing editable tasks" />;
   }
 
-  if (!uid) {
-    return <PageMessage title="No LINE profile" detail="Please open this page from LINE LIFF again." />;
+  if (!hasLiffSession) {
+    return null;
   }
 
   if (!activeGroupId) {
