@@ -248,3 +248,7 @@ SamDang/
 |-- proxy/         nginx, TLS, and reverse-proxy configuration
 |-- .env           Local secrets (ignored by Git)
 ```
+
+## Credits
+
+Developed with assistance from OpenAI Codex.
