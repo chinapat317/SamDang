@@ -247,17 +247,4 @@ SamDang/
 |-- frontHandler/  Authenticated API used by the frontend
 |-- proxy/         nginx, TLS, and reverse-proxy configuration
 |-- .env           Local secrets (ignored by Git)
-`-- LICENSE
 ```
-
-## Security notes
-
-- Never commit `.env`, private keys, certificates, LINE tokens, or role codes.
-- The browser sends a LINE access token in the `Authorization` header; `frontHandler` resolves the user identity through LINE rather than trusting a client-supplied user ID.
-- Task and admin authorization must always remain enforced server-side.
-- PostgreSQL and application services are exposed only to the internal Docker network; nginx is the public entry point.
-- Rotate credentials immediately if they are ever committed or included in logs.
-
-## License
-
-See [LICENSE](LICENSE).
