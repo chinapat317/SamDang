@@ -44,7 +44,7 @@ export default function AdminShowUserPage() {
         }
       } catch (e: unknown) {
         if (!cancelled) {
-          setErrMsg(e instanceof Error ? e.message : "Failed to load users");
+          setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลผู้ใช้ไม่สำเร็จ");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -58,7 +58,7 @@ export default function AdminShowUserPage() {
   }, [accessToken]);
 
   if (liff_loading || (!!accessToken && (loading || !loaded) && !errMsg)) {
-    return <PageMessage title="Loading..." detail="Checking admin role" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ" />;
   }
 
   if (!hasLiffSession) {
@@ -66,40 +66,42 @@ export default function AdminShowUserPage() {
   }
 
   if (errMsg) {
-    return <PageMessage title="Cannot show users" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถแสดงผู้ใช้ได้" detail={errMsg} />;
   }
 
   return (
     <main className="adminUsersPage">
-      <div className="pageTitle">All users</div>
+      <div className="pageTitle">ผู้ใช้ทั้งหมด</div>
       <div className="titleActions">
         <button
           type="button"
           className="primaryButton"
           onClick={() => navigateInFrontend(router, "/admin/editUser")}
         >
-          change role
+          เปลี่ยนสิทธิ์
         </button>
       </div>
 
       {users.length === 0 ? (
-        <div className="emptyState">No users found.</div>
+        <div className="emptyState">ไม่พบผู้ใช้</div>
       ) : (
-        <section className="userPanel" aria-label="User list">
+        <section className="userPanel" aria-label="รายชื่อผู้ใช้">
           <div className="userGrid userHeader" aria-hidden="true">
-            <div>line display name</div>
-            <div>role</div>
+            <div>ชื่อที่แสดงใน LINE</div>
+            <div>สิทธิ์</div>
           </div>
 
           {users.map((user, index) => (
             <article className="userGrid userRow" key={user.uid || `${user.display_name}-${user.role}-${index}`}>
               <div className="userCell">
-                <span className="mobileLabel">line display name</span>
+                <span className="mobileLabel">ชื่อที่แสดงใน LINE</span>
                 <span className="cellText">{user.display_name || "-"}</span>
               </div>
               <div className="userCell">
-                <span className="mobileLabel">role</span>
-                <span className={`roleBadge ${user.role}`}>{user.role}</span>
+                <span className="mobileLabel">สิทธิ์</span>
+                <span className={`roleBadge ${user.role}`}>
+                  {user.role === "admin" ? "ผู้ดูแลระบบ" : user.role === "manager" ? "ผู้จัดการ" : "สมาชิก"}
+                </span>
               </div>
             </article>
           ))}

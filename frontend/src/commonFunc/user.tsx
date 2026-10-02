@@ -12,7 +12,7 @@ export async function GetAllUsers(accessToken: string): Promise<Users[]> {
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 403) {
-      throw new Error("Only admin users can view this page.");
+      throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่ดูหน้านี้ได้");
     }
     throw new Error(`GetAllUsers failed ${res.status}: ${text}`);
   }
@@ -21,7 +21,7 @@ export async function GetAllUsers(accessToken: string): Promise<Users[]> {
   if (Array.isArray(data)) {
     return data;
   }
-  throw new Error("Invalid response format from backend");
+  throw new Error("รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง");
 }
 
 export async function GetUsersByRole(accessToken: string, role: string[]): Promise<Users[]> {
@@ -37,7 +37,7 @@ export async function GetUsersByRole(accessToken: string, role: string[]): Promi
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 403) {
-      throw new Error("Only admin users can view this page.");
+      throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่ดูหน้านี้ได้");
     }
     throw new Error(`GetUsersByRole failed ${res.status}: ${text}`);
   }
@@ -46,7 +46,7 @@ export async function GetUsersByRole(accessToken: string, role: string[]): Promi
   if (Array.isArray(data)) {
     return data;
   }
-  throw new Error("Invalid response format from backend");
+  throw new Error("รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง");
 }
 
 export async function UpdateUsersRole(accessToken: string, users: EditUserRole[]): Promise<void> {
@@ -62,7 +62,7 @@ export async function UpdateUsersRole(accessToken: string, users: EditUserRole[]
   if (!res.ok) {
     const text = await res.text();
     if (res.status === 403) {
-      throw new Error("Only admin users can edit roles.");
+      throw new Error("เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขสิทธิ์ได้");
     }
     throw new Error(`UpdateUsersRole failed ${res.status}: ${text}`);
   }

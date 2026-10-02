@@ -30,7 +30,7 @@ export default function LiffBootstrap() {
         const accessToken = liff.getAccessToken();
 
         if (!accessToken) {
-          throw new Error("LIFF access token is unavailable");
+          throw new Error("ไม่พบโทเคนสำหรับเข้าใช้งาน LIFF");
         }
 
         if (cancelled) return;
@@ -44,7 +44,7 @@ export default function LiffBootstrap() {
         setLiffSession(session);
       } catch (e: unknown) {
         if (cancelled) return;
-        clearLiffSession(e instanceof Error ? e.message : "LIFF error");
+        clearLiffSession(e instanceof Error ? e.message : "เกิดข้อผิดพลาดจาก LIFF");
       }
     }
 

@@ -37,7 +37,7 @@ export async function loadLiffSdk(): Promise<void> {
     s.async = true;
     s.dataset.liffSdk = "1";
     s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Failed to load LIFF SDK"));
+    s.onerror = () => reject(new Error("โหลด LIFF SDK ไม่สำเร็จ"));
     document.body.appendChild(s);
   });
 }

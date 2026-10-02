@@ -128,7 +128,74 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 
 	rows, err := db.QueryContext(ctx, `
 		WITH requester AS (
-			SELECT role
+			SELECT id
+			FROM line_users
+			WHERE line_user_id = $1
+		)
+		SELECT
+			t.id,
+			COALESCE(assigned_to.display_name, ''),
+			COALESCE(assigned_by.display_name, ''),
+			COALESCE(checked_by.display_name, ''),
+			t.status,
+			t.title,
+			COALESCE(t.description, ''),
+			t.due_date,
+			t.check_by IS NOT NULL
+		FROM task t
+		JOIN line_groups g ON g.id = t.assigned_group
+		LEFT JOIN line_users assigned_to ON assigned_to.id = t.assigned_to
+		LEFT JOIN line_users assigned_by ON assigned_by.id = t.assigned_by
+		LEFT JOIN line_users checked_by ON checked_by.id = t.check_by
+		CROSS JOIN requester
+		JOIN line_group_members requester_membership
+			ON requester_membership.line_group_id = g.id
+			AND requester_membership.line_user_id = requester.id
+			AND requester_membership.joined_status = 'joined'
+		WHERE g.line_group_id = $2
+			AND g.joined_status = 'joined'
+		ORDER BY t.due_date ASC, t.id ASC
+	`, uid, gid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	tasks := make([]TaskCanEditItem, 0)
+	for rows.Next() {
+		var task TaskCanEditItem
+		var dueDate time.Time
+		if err := rows.Scan(
+			&task.ID,
+			&task.AssignedTo,
+			&task.AssignedBy,
+			&task.CheckedBy,
+			&task.Status,
+			&task.Title,
+			&task.Description,
+			&dueDate,
+			&task.Checked,
+		); err != nil {
+			return nil, err
+		}
+		task.DueDate = dueDate.Format("2006-01-02")
+		tasks = append(tasks, task)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tasks, nil
+}
+
+// MyEditableGroupTasks returns only tasks the requester may edit. Viewing all
+// group tasks is handled separately by MyGroupTasks.
+func MyEditableGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := db.QueryContext(ctx, `
+		WITH requester AS (
+			SELECT id
 			FROM line_users
 			WHERE line_user_id = $1
 		)
@@ -149,11 +216,8 @@ func MyGroupTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, error)
 		LEFT JOIN line_users checked_by ON checked_by.id = t.check_by
 		CROSS JOIN requester
 		WHERE g.line_group_id = $2
-			AND (
-				requester.role IN ('admin', 'manager')
-				OR assigned_to.line_user_id = $1
-				OR assigned_by.line_user_id = $1
-			)
+			AND g.joined_status = 'joined'
+			AND (t.assigned_to = requester.id OR t.assigned_by = requester.id)
 		ORDER BY t.due_date ASC, t.id ASC
 	`, uid, gid)
 	if err != nil {
@@ -226,11 +290,7 @@ func UpdateMyGroupTasks(db *sql.DB, uid string, gid string, tasks []TaskEditItem
 			WHERE t.id = $3
 				AND t.assigned_group = g.id
 				AND g.line_group_id = $2
-				AND (
-					requester.role IN ('admin', 'manager')
-					OR t.assigned_to = requester.id
-					OR t.assigned_by = requester.id
-				)
+				AND (t.assigned_to = requester.id OR t.assigned_by = requester.id)
 		`, uid, gid, task.ID, task.Description, task.Status, deadlineAt)
 		if err != nil {
 			return fmt.Errorf("update task %d error: %w", task.ID, err)
@@ -278,6 +338,7 @@ func CheckMyGroupTasks(db *sql.DB, uid string, tasks []TaskCheckItem) error {
 				updated_at = now()
 			FROM requester
 			WHERE t.id = $2
+				AND t.assigned_by = requester.id
 		`, uid, task.ID, task.Status, task.Checked)
 		if err != nil {
 			return fmt.Errorf("check task %d error: %w", task.ID, err)
@@ -318,11 +379,16 @@ func AssignTask(db *sql.DB, assignedByLineUserID string, task TaskAssignItem) er
 	)
 
 	err := db.QueryRowContext(ctx, `
-		SELECT id
-		FROM line_groups
-		WHERE line_group_id = $1
+		SELECT g.id
+		FROM line_groups g
+		JOIN line_group_members gm ON gm.line_group_id = g.id
+		JOIN line_users u ON u.id = gm.line_user_id
+		WHERE g.line_group_id = $1
+			AND u.line_user_id = $2
+			AND g.joined_status = 'joined'
+			AND gm.joined_status = 'joined'
 		LIMIT 1
-	`, task.GroupID).Scan(&groupID)
+	`, task.GroupID, assignedByLineUserID).Scan(&groupID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("group not found: %s", task.GroupID)
@@ -331,11 +397,14 @@ func AssignTask(db *sql.DB, assignedByLineUserID string, task TaskAssignItem) er
 	}
 
 	err = db.QueryRowContext(ctx, `
-		SELECT id
-		FROM line_users
-		WHERE line_user_hmac = $1
+		SELECT u.id
+		FROM line_users u
+		JOIN line_group_members gm ON gm.line_user_id = u.id
+		WHERE u.line_user_hmac = $1
+			AND gm.line_group_id = $2
+			AND gm.joined_status = 'joined'
 		LIMIT 1
-	`, task.AssignedTo).Scan(&assignedToID)
+	`, task.AssignedTo, groupID).Scan(&assignedToID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return fmt.Errorf("assigned_to user hash not found: %s", task.AssignedTo)
@@ -389,12 +458,19 @@ func GetGroupDoneTasks(db *sql.DB, uid string, gid string) ([]TaskCanEditItem, e
 		select t.id, t.title, coalesce(t.description, ''), t.status, t.due_date, coalesce(assigned_to.display_name, ''), coalesce(assigned_by.display_name, ''), coalesce(checked_by.display_name, '')
 		from task t
 		join line_groups g on g.id = t.assigned_group
+		join line_group_members requester_membership on requester_membership.line_group_id = g.id
+		join line_users requester on requester.id = requester_membership.line_user_id
 		left join line_users assigned_to on assigned_to.id = t.assigned_to
 		left join line_users assigned_by on assigned_by.id = t.assigned_by
 		left join line_users checked_by on checked_by.id = t.check_by
-		where g.line_group_id = $1 and t.status = 'done'
+		where g.line_group_id = $1
+			and requester.line_user_id = $2
+			and requester_membership.joined_status = 'joined'
+			and g.joined_status = 'joined'
+			and assigned_by.line_user_id = $2
+			and t.status = 'done'
 		order by t.due_date asc, t.id asc
-	`, gid)
+	`, gid, uid)
 	if err != nil {
 		return nil, err
 	}

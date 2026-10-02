@@ -49,7 +49,7 @@ export default function EditTasksPage() {
     (typeof groupNameJson === "string" && groupNameJson) ||
     selectedGroup?.group_name ||
     selectedGroup?.line_group_name ||
-    "Group";
+    "กลุ่ม";
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -88,7 +88,7 @@ export default function EditTasksPage() {
           setLoaded(true);
         }
       } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to load tasks");
+      if (!cancelled) setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลงานไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -118,7 +118,7 @@ export default function EditTasksPage() {
   async function confirmEditTasks() {
     if (!activeGroupId) return;
     if (tasks.length === 0) {
-      setConfirmStatus("No tasks to update.");
+      setConfirmStatus("ไม่มีงานให้อัปเดต");
       return;
     }
 
@@ -129,14 +129,14 @@ export default function EditTasksPage() {
       window.localStorage.removeItem(editDraftKey(activeGroupId));
       navigateInFrontend(router, "/tasks?edited=1");
     } catch (e: unknown) {
-      setConfirmStatus(e instanceof Error ? e.message : "Update failed");
+      setConfirmStatus(e instanceof Error ? e.message : "อัปเดตไม่สำเร็จ");
     } finally {
       setConfirming(false);
     }
   }
 
   if (liff_loading || (!!activeGroupId && (loading || !loaded))) {
-    return <PageMessage title="Loading..." detail="Preparing editable tasks" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังเตรียมงานที่แก้ไขได้" />;
   }
 
   if (!hasLiffSession) {
@@ -144,46 +144,46 @@ export default function EditTasksPage() {
   }
 
   if (!activeGroupId) {
-    return <PageMessage title="No group selected" detail="Please choose a group from the tasks page." />;
+    return <PageMessage title="ยังไม่ได้เลือกกลุ่ม" detail="กรุณาเลือกกลุ่มจากหน้างาน" />;
   }
 
   if (errMsg) {
-    return <PageMessage title="Cannot load tasks" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถโหลดงานได้" detail={errMsg} />;
   }
 
   return (
     <main className="editPage">
-      <div className="pageTitle">edit tasks for group: {groupName}</div>
+      <div className="pageTitle">แก้ไขงานสำหรับกลุ่ม: {groupName}</div>
 
       {tasks.length === 0 ? (
-        <div className="emptyState">No tasks found.</div>
+        <div className="emptyState">ไม่พบงาน</div>
       ) : (
-        <section className="taskList" aria-label="Editable task list">
+        <section className="taskList" aria-label="รายการงานที่แก้ไขได้">
           {tasks.map((task, index) => (
             <article className="taskItem" key={task.id || `${task.title}-${index}`}>
               <div className="fieldBlock">
-                <label>Task title</label>
+                <label>ชื่องาน</label>
                 <div className="readonlyField" title={task.title}>
                   {task.title || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock">
-                <label>Assigned by</label>
+                <label>ผู้มอบหมาย</label>
                 <div className="readonlyField" title={task.assigned_by}>
                   {task.assigned_by || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock">
-                <label>Assigned to</label>
+                <label>ผู้รับผิดชอบ</label>
                 <div className="readonlyField" title={task.assigned_to}>
                   {task.assigned_to || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock fullWidth">
-                <label htmlFor={`description-${index}`}>Description</label>
+                <label htmlFor={`description-${index}`}>รายละเอียด</label>
                 <textarea
                   id={`description-${index}`}
                   className="textareaField"
@@ -193,7 +193,7 @@ export default function EditTasksPage() {
               </div>
 
               <div className="fieldBlock">
-                <label htmlFor={`due-date-${index}`}>Due date</label>
+                <label htmlFor={`due-date-${index}`}>วันครบกำหนด</label>
                 <input
                   id={`due-date-${index}`}
                   type="date"
@@ -204,7 +204,7 @@ export default function EditTasksPage() {
               </div>
 
               <div className="fieldBlock">
-                <label htmlFor={`status-${index}`}>Status</label>
+                <label htmlFor={`status-${index}`}>สถานะ</label>
                 <select
                   id={`status-${index}`}
                   className="inputField"
@@ -213,8 +213,8 @@ export default function EditTasksPage() {
                     updateTask(index, { status: e.target.value as TaskCanEditItem["status"] })
                   }
                 >
-                  <option value="in progress">in progress</option>
-                  <option value="done">done</option>
+                  <option value="in progress">กำลังดำเนินการ</option>
+                  <option value="done">เสร็จแล้ว</option>
                 </select>
               </div>
             </article>
@@ -230,7 +230,7 @@ export default function EditTasksPage() {
           disabled={confirming || tasks.length === 0}
           onClick={confirmEditTasks}
         >
-          {confirming ? "Updating..." : "Confirm"}
+          {confirming ? "กำลังอัปเดต..." : "ยืนยัน"}
         </button>
       </div>
 

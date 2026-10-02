@@ -2,7 +2,6 @@
 
 import { GetGroupInfo, GetMyGroups } from "@/commonFunc/group";
 import { useRequireLiffSession } from "@/commonFunc/liffSession";
-import { CheckRole } from "@/commonFunc/user";
 import { useMyGroup } from "@/context/MyGroup";
 import { useLiffSession } from "@/lib/liff-session";
 import { GroupInfo } from "@/types/types";
@@ -10,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 function groupName(group: GroupInfo) {
-  return group.group_name || group.line_group_name || "Unknown group";
+  return group.group_name || group.line_group_name || "กลุ่มที่ไม่ทราบชื่อ";
 }
 
 function navigateInFrontend(router: { push: (path: string) => void }, path: string) {
@@ -35,7 +34,6 @@ export default function TasksPage() {
   const [openingAddPage, setOpeningAddPage] = useState(false);
   const [openingEditPage, setOpeningEditPage] = useState(false);
   const [openingCheckPage, setOpeningCheckPage] = useState(false);
-  const [isManager, setIsManager] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [showSelectGroupPopup, setShowSelectGroupPopup] = useState(false);
   const [showAssignedPopup, setShowAssignedPopup] = useState(() => {
@@ -66,7 +64,7 @@ export default function TasksPage() {
 
         setGroups(myGroups);
       } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to load groups");
+      if (!cancelled) setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลกลุ่มไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -77,26 +75,6 @@ export default function TasksPage() {
       cancelled = true;
     };
   }, [accessToken, setGroups]);
-
-  useEffect(() => {
-    if (!accessToken) return;
-
-    let cancelled = false;
-
-    async function loadManagerRole() {
-      try {
-        const allowed = await CheckRole(accessToken, ["manager", "admin"]);
-        if (!cancelled) setIsManager(allowed);
-      } catch {
-        if (!cancelled) setIsManager(false);
-      }
-    }
-
-    loadManagerRole();
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken]);
 
   async function prepareSelectedGroup() {
     if (!selectedGroup) {
@@ -119,7 +97,7 @@ export default function TasksPage() {
       });
       return true;
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to load selected group");
+      setErrMsg(e instanceof Error ? e.message : "โหลดกลุ่มที่เลือกไม่สำเร็จ");
       return false;
     }
   }
@@ -131,7 +109,7 @@ export default function TasksPage() {
       if (!ready || !selectedGroup) return;
       navigateInFrontend(router, `/tasks/add?gid=${encodeURIComponent(selectedGroup.group_id)}`);
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to open add task page");
+      setErrMsg(e instanceof Error ? e.message : "เปิดหน้าเพิ่มงานไม่สำเร็จ");
     } finally {
       setOpeningAddPage(false);
     }
@@ -144,7 +122,7 @@ export default function TasksPage() {
       if (!ready || !selectedGroup) return;
       navigateInFrontend(router, `/tasks/show?gid=${encodeURIComponent(selectedGroup.group_id)}`);
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to open show task page");
+      setErrMsg(e instanceof Error ? e.message : "เปิดหน้าแสดงงานไม่สำเร็จ");
     } finally {
       setOpeningShowPage(false);
     }
@@ -157,7 +135,7 @@ export default function TasksPage() {
       if (!ready || !selectedGroup) return;
       navigateInFrontend(router, `/tasks/edit?gid=${encodeURIComponent(selectedGroup.group_id)}`);
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to open edit task page");
+      setErrMsg(e instanceof Error ? e.message : "เปิดหน้าแก้ไขงานไม่สำเร็จ");
     } finally {
       setOpeningEditPage(false);
     }
@@ -170,14 +148,14 @@ export default function TasksPage() {
       if (!ready || !selectedGroup) return;
       navigateInFrontend(router, `/manager/check?gid=${encodeURIComponent(selectedGroup.group_id)}`);
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to open check works page");
+      setErrMsg(e instanceof Error ? e.message : "เปิดหน้าตรวจงานไม่สำเร็จ");
     } finally {
       setOpeningCheckPage(false);
     }
   }
 
   if (liff_loading || loading) {
-    return <PageMessage title="Loading..." detail="Preparing your groups" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังเตรียมข้อมูลกลุ่มของคุณ" />;
   }
 
   if (!hasLiffSession) {
@@ -185,18 +163,18 @@ export default function TasksPage() {
   }
 
   if (liffError) {
-    return <PageMessage title="Failed to authenticate" detail={liffError} />;
+    return <PageMessage title="ยืนยันตัวตนไม่สำเร็จ" detail={liffError} />;
   }
 
   if (errMsg) {
-    return <PageMessage title="Cannot load groups" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถโหลดกลุ่มได้" detail={errMsg} />;
   }
 
   if (groups.length === 0) {
     return (
       <PageMessage
-        title="No registered groups"
-        detail="Please register as a member in a SamDang group first."
+        title="ไม่พบกลุ่มที่ลงทะเบียน"
+        detail="กรุณาลงทะเบียนเป็นสมาชิกในกลุ่ม SamDang ก่อน"
       />
     );
   }
@@ -217,11 +195,11 @@ export default function TasksPage() {
 
   return (
     <main className="tasksPage">
-      <section className="groupPicker" aria-label="Select group">
+      <section className="groupPicker" aria-label="เลือกกลุ่ม">
         <div className="headerRow">
           <div>
-            <h1>Tasks</h1>
-            <p>Select a group before adding tasks.</p>
+            <h1>งาน</h1>
+            <p>เลือกกลุ่มก่อนเพิ่มงาน</p>
           </div>
           <div className="headerActions">
             <button
@@ -230,7 +208,7 @@ export default function TasksPage() {
               disabled={openingShowPage}
               onClick={goShowTask}
             >
-              {openingShowPage ? "Opening..." : "Show"}
+              {openingShowPage ? "กำลังเปิด..." : "แสดงงาน"}
             </button>
             <button
               type="button"
@@ -238,7 +216,7 @@ export default function TasksPage() {
               disabled={openingAddPage}
               onClick={goAddTask}
             >
-              {openingAddPage ? "Opening..." : "Add task"}
+              {openingAddPage ? "กำลังเปิด..." : "เพิ่มงาน"}
             </button>
             <button
               type="button"
@@ -246,24 +224,22 @@ export default function TasksPage() {
               disabled={openingEditPage}
               onClick={goEditTask}
             >
-              {openingEditPage ? "Opening..." : "Edit"}
+              {openingEditPage ? "กำลังเปิด..." : "แก้ไขงาน"}
             </button>
-            {isManager ? (
-              <button
-                type="button"
-                className="secondaryButton"
-                disabled={openingCheckPage}
-                onClick={goCheckWork}
-              >
-                {openingCheckPage ? "Opening..." : "Check works"}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className="secondaryButton"
+              disabled={openingCheckPage}
+              onClick={goCheckWork}
+            >
+              {openingCheckPage ? "กำลังเปิด..." : "ตรวจงาน"}
+            </button>
           </div>
         </div>
 
         <div className="selectPanel">
           <label className="selectLabel" htmlFor="group-select">
-            Group
+            กลุ่ม
           </label>
           <select
             id="group-select"
@@ -285,10 +261,10 @@ export default function TasksPage() {
         <div className="modalBackdrop" role="presentation">
           <div className="modalBox" role="dialog" aria-modal="true" aria-labelledby="assigned-title">
             <div id="assigned-title" className="modalTitle">
-              Assigned
+              มอบหมายงานสำเร็จ
             </div>
             <button type="button" className="modalButton" onClick={closeAssignedPopup}>
-              OK
+              ตกลง
             </button>
           </div>
         </div>
@@ -298,10 +274,10 @@ export default function TasksPage() {
         <div className="modalBackdrop" role="presentation">
           <div className="modalBox" role="dialog" aria-modal="true" aria-labelledby="edited-title">
             <div id="edited-title" className="modalTitle">
-              Success edit task
+              แก้ไขงานสำเร็จ
             </div>
             <button type="button" className="modalButton" onClick={closeEditedPopup}>
-              OK
+              ตกลง
             </button>
           </div>
         </div>
@@ -323,7 +299,7 @@ export default function TasksPage() {
               className="modalButton"
               onClick={() => setShowSelectGroupPopup(false)}
             >
-              OK
+              ตกลง
             </button>
           </div>
         </div>

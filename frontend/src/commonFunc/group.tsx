@@ -17,7 +17,7 @@ export async function GetGroupInfo(accessToken: string, gid: string): Promise<Gr
     console.log("GetGroupInfo response:", data);
     return data;
   }
-  throw new Error("Invalid response format from backend");
+  throw new Error("รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง");
 }
 
 export function MemberList(groupMemJson: unknown): ListUsers[] {
@@ -71,5 +71,5 @@ export async function GetMyGroups(accessToken: string): Promise<GroupInfo[]> {
     if (data && typeof data === "object" && Array.isArray(data.groups)) {
       return data.groups;
     }
-    throw new Error("Invalid response format from backend");
+    throw new Error("รูปแบบข้อมูลตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง");
   }

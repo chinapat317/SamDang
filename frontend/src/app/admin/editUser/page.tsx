@@ -41,7 +41,7 @@ export default function EditUserPage() {
         }
       } catch (e: unknown) {
         if (!cancelled) {
-          setErrMsg(e instanceof Error ? e.message : "Failed to load users");
+          setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลผู้ใช้ไม่สำเร็จ");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -63,9 +63,9 @@ export default function EditUserPage() {
         accessToken,
         users.map((user) => ({ uid: user.uid, role: user.role })),
       );
-      setSuccessMsg("User roles updated.");
+      setSuccessMsg("อัปเดตสิทธิ์ผู้ใช้แล้ว");
     } catch (e: unknown) {
-      setErrMsg(e instanceof Error ? e.message : "Failed to update user roles");
+      setErrMsg(e instanceof Error ? e.message : "อัปเดตสิทธิ์ผู้ใช้ไม่สำเร็จ");
     } finally {
       setSaving(false);
     }
@@ -78,7 +78,7 @@ export default function EditUserPage() {
   }
 
   if (liff_loading || (!!accessToken && (loading || !loaded) && !errMsg)) {
-    return <PageMessage title="Loading..." detail="Checking admin role" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังตรวจสอบสิทธิ์ผู้ดูแลระบบ" />;
   }
 
   if (!hasLiffSession) {
@@ -86,29 +86,29 @@ export default function EditUserPage() {
   }
 
   if (errMsg && !loaded) {
-    return <PageMessage title="Cannot edit users" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถแก้ไขผู้ใช้ได้" detail={errMsg} />;
   }
 
   return (
     <main className="editUsersPage">
-      <div className="pageTitle">Edit user roles</div>
+      <div className="pageTitle">แก้ไขสิทธิ์ผู้ใช้</div>
 
       {errMsg ? <div className="statusText errorText">{errMsg}</div> : null}
       {successMsg ? <div className="statusText successText">{successMsg}</div> : null}
 
       {users.length === 0 ? (
-        <div className="emptyState">No editable users found.</div>
+        <div className="emptyState">ไม่พบผู้ใช้ที่แก้ไขสิทธิ์ได้</div>
       ) : (
-        <section className="userPanel" aria-label="Editable user list">
+        <section className="userPanel" aria-label="รายชื่อผู้ใช้ที่แก้ไขได้">
           <div className="userGrid userHeader" aria-hidden="true">
-            <div>line display name</div>
-            <div>role</div>
+            <div>ชื่อที่แสดงใน LINE</div>
+            <div>สิทธิ์</div>
           </div>
 
           {users.map((user) => (
             <article className="userGrid userRow" key={user.uid}>
               <div className="userCell">
-                <span className="mobileLabel">line display name</span>
+                <span className="mobileLabel">ชื่อที่แสดงใน LINE</span>
                 <div className="userIdentity">
                   {user.picture_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -118,15 +118,15 @@ export default function EditUserPage() {
                 </div>
               </div>
               <div className="userCell">
-                <span className="mobileLabel">role</span>
+                <span className="mobileLabel">สิทธิ์</span>
                 <select
                   className="roleSelect"
                   value={user.role}
                   onChange={(e) => setUserRole(user.uid, e.target.value as EditUserRole["role"])}
-                  aria-label={`${user.display_name || user.uid} role`}
+                  aria-label={`สิทธิ์ของ ${user.display_name || user.uid}`}
                 >
-                  <option value="member">member</option>
-                  <option value="manager">manager</option>
+                  <option value="member">สมาชิก</option>
+                  <option value="manager">ผู้จัดการ</option>
                 </select>
               </div>
             </article>
@@ -141,7 +141,7 @@ export default function EditUserPage() {
           disabled={saving || users.length === 0}
           onClick={confirmChanges}
         >
-          {saving ? "Saving..." : "confirm"}
+          {saving ? "กำลังบันทึก..." : "ยืนยัน"}
         </button>
       </div>
 

@@ -6,14 +6,27 @@ import { GetMyGroupShowTasks } from "@/commonFunc/task";
 import { useMyGroup } from "@/context/MyGroup";
 import { useLiffSession } from "@/lib/liff-session";
 import { TaskCanEditItem } from "@/types/types";
+import { useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
 
+function navigateInFrontend(router: { push: (path: string) => void }, path: string) {
+  const isFrontPath =
+    window.location.pathname === "/front" || window.location.pathname.startsWith("/front/");
+  if (isFrontPath) {
+    window.location.assign(`/front${path}`);
+    return;
+  }
+  router.push(path);
+}
+
 export default function ShowTasksPage() {
+  const router = useRouter();
   const liffSession = useLiffSession();
   const { accessToken, liff_loading } = liffSession;
   const hasLiffSession = useRequireLiffSession(liffSession);
   const { selectedGroup } = useMyGroup();
   const [tasks, setTasks] = useState<TaskCanEditItem[]>([]);
+  const [hideDone, setHideDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
@@ -30,7 +43,16 @@ export default function ShowTasksPage() {
     (typeof groupNameJson === "string" && groupNameJson) ||
     selectedGroup?.group_name ||
     selectedGroup?.line_group_name ||
-    "Group";
+    "กลุ่ม";
+  const visibleTasks = hideDone ? tasks.filter((task) => task.status !== "done") : tasks;
+
+  function openTaskInfo(task: TaskCanEditItem) {
+    if (!activeGroupId) return;
+    navigateInFrontend(
+      router,
+      `/tasks/show/info?gid=${encodeURIComponent(activeGroupId)}&tid=${encodeURIComponent(String(task.id))}`,
+    );
+  }
 
   useEffect(() => {
     if (!activeGroupId) return;
@@ -56,7 +78,7 @@ export default function ShowTasksPage() {
           setLoaded(true);
         }
       } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to load tasks");
+      if (!cancelled) setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลงานไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -69,7 +91,7 @@ export default function ShowTasksPage() {
   }, [accessToken, activeGroupId]);
 
   if (liff_loading || (!!activeGroupId && (loading || !loaded))) {
-    return <PageMessage title="Loading..." detail="Preparing tasks" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังเตรียมข้อมูลงาน" />;
   }
 
   if (!hasLiffSession) {
@@ -77,62 +99,52 @@ export default function ShowTasksPage() {
   }
 
   if (!activeGroupId) {
-    return <PageMessage title="No group selected" detail="Please choose a group from the tasks page." />;
+    return <PageMessage title="ยังไม่ได้เลือกกลุ่ม" detail="กรุณาเลือกกลุ่มจากหน้างาน" />;
   }
 
   if (errMsg) {
-    return <PageMessage title="Cannot load tasks" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถโหลดงานได้" detail={errMsg} />;
   }
 
   return (
     <main className="showPage">
-      <div className="pageTitle">tasks for group: {groupName}</div>
+      <div className="headerRow">
+        <div className="pageTitle">งานของกลุ่ม: {groupName}</div>
+        <label className="hideDoneControl">
+          <input
+            type="checkbox"
+            checked={hideDone}
+            onChange={(event) => setHideDone(event.target.checked)}
+          />
+          <span>ซ่อนงานที่เสร็จแล้ว</span>
+        </label>
+      </div>
 
-      {tasks.length === 0 ? (
-        <div className="emptyState">No tasks found.</div>
+      {visibleTasks.length === 0 ? (
+        <div className="emptyState">ไม่พบงาน</div>
       ) : (
-        <section className="taskPanel" aria-label="Task list">
+        <section className="taskPanel" aria-label="รายการงาน">
           <div className="taskGrid taskHeader" aria-hidden="true">
-            <div>task title</div>
-            <div>description</div>
-            <div>assigned to</div>
-            <div>assigned by</div>
-            <div>checked by</div>
-            <div>due date</div>
-            <div>status</div>
+            <div>ชื่องาน</div>
+            <div>วันครบกำหนด</div>
           </div>
 
-          {tasks.map((task, index) => (
-            <article className="taskGrid taskRow" key={task.id || `${task.title}-${index}`}>
+          {visibleTasks.map((task, index) => (
+            <button
+              type="button"
+              className="taskGrid taskRow"
+              key={task.id || `${task.title}-${index}`}
+              onClick={() => openTaskInfo(task)}
+            >
               <div className="taskCell">
-                <span className="mobileLabel">task title</span>
+                <span className="mobileLabel">ชื่องาน</span>
                 <span className="cellText">{task.title || "-"}</span>
               </div>
               <div className="taskCell">
-                <span className="mobileLabel">description</span>
-                <span className="cellText descriptionText">{task.description || "-"}</span>
-              </div>
-              <div className="taskCell">
-                <span className="mobileLabel">assigned to</span>
-                <span className="cellText">{task.assigned_to || "-"}</span>
-              </div>
-              <div className="taskCell">
-                <span className="mobileLabel">assigned by</span>
-                <span className="cellText">{task.assigned_by || "-"}</span>
-              </div>
-              <div className="taskCell">
-                <span className="mobileLabel">checked by</span>
-                <span className="cellText">{task.checked_by || ""}</span>
-              </div>
-              <div className="taskCell">
-                <span className="mobileLabel">due date</span>
+                <span className="mobileLabel">วันครบกำหนด</span>
                 <span className="cellText">{task.due_date || "-"}</span>
               </div>
-              <div className="taskCell">
-                <span className="mobileLabel">status</span>
-                <span className="cellText">{task.status || "-"}</span>
-              </div>
-            </article>
+            </button>
           ))}
         </section>
       )}
@@ -140,18 +152,47 @@ export default function ShowTasksPage() {
       <style jsx>{`
         .showPage {
           width: 100%;
-          max-width: 1100px;
+          max-width: 780px;
           margin: 0 auto;
           box-sizing: border-box;
         }
 
+        .headerRow {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 16px;
+        }
+
         .pageTitle {
-          margin: 8px 0 16px;
-          text-align: center;
+          min-width: 0;
+          margin: 8px 0 0;
           font-size: 20px;
           font-weight: 800;
           line-height: 1.35;
           overflow-wrap: anywhere;
+        }
+
+        .hideDoneControl {
+          flex: 0 0 auto;
+          min-height: 36px;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 4px;
+          color: #111;
+          font-size: 13px;
+          font-weight: 800;
+          line-height: 1.3;
+          cursor: pointer;
+          user-select: none;
+        }
+
+        .hideDoneControl input {
+          width: 18px;
+          height: 18px;
+          margin: 0;
         }
 
         .emptyState {
@@ -171,10 +212,7 @@ export default function ShowTasksPage() {
 
         .taskGrid {
           display: grid;
-          grid-template-columns:
-            minmax(150px, 1.4fr) minmax(180px, 1.7fr) minmax(130px, 1.1fr)
-            minmax(130px, 1.1fr) minmax(130px, 1.1fr) minmax(110px, 0.9fr)
-            minmax(110px, 0.9fr);
+          grid-template-columns: minmax(0, 1fr) minmax(110px, 160px);
           align-items: stretch;
         }
 
@@ -192,11 +230,28 @@ export default function ShowTasksPage() {
         }
 
         .taskRow {
+          width: 100%;
+          border: 0;
           border-bottom: 1px solid #f0f0f0;
+          background: white;
+          color: inherit;
+          font: inherit;
+          text-align: left;
+          cursor: pointer;
         }
 
         .taskRow:last-child {
           border-bottom: 0;
+        }
+
+        .taskRow:hover,
+        .taskRow:focus-visible {
+          background: #fafafa;
+        }
+
+        .taskRow:focus-visible {
+          outline: 2px solid #111;
+          outline-offset: -2px;
         }
 
         .mobileLabel {
@@ -210,13 +265,14 @@ export default function ShowTasksPage() {
           overflow-wrap: anywhere;
         }
 
-        .descriptionText {
-          white-space: pre-wrap;
-        }
-
         @media (max-width: 820px) {
-          .pageTitle {
-            text-align: left;
+          .headerRow {
+            display: grid;
+            gap: 10px;
+          }
+
+          .hideDoneControl {
+            justify-self: start;
           }
 
           .taskPanel {
@@ -244,7 +300,7 @@ export default function ShowTasksPage() {
 
           .taskCell {
             display: grid;
-            grid-template-columns: minmax(96px, 34%) minmax(0, 1fr);
+            grid-template-columns: minmax(86px, 34%) minmax(0, 1fr);
             gap: 10px;
             padding: 10px 12px;
             border-bottom: 1px solid #f3f3f3;

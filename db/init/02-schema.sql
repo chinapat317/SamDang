@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS line_users (
   id              BIGSERIAL PRIMARY KEY,
   line_user_id    TEXT NOT NULL UNIQUE,
   line_user_hmac  TEXT NOT NULL UNIQUE,
-  role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'manager', 'member')),
+  role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('super_admin', 'admin', 'member')),
   display_name    TEXT,
   picture_url     TEXT,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS line_group_members (
   line_user_id  BIGINT NOT NULL REFERENCES line_users(id)
                 ON DELETE CASCADE,
   joined_status       TEXT NOT NULL CHECK (joined_status IN ('joined', 'leave')),
+  group_role                TEXT NOT NULL DEFAULT 'member' CHECK (group_role IN ('admin', 'manager', 'member')),
   latest_update       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (line_group_id, line_user_id)
 );

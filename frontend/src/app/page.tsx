@@ -6,7 +6,7 @@ import { Suspense } from "react";
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<PageMessage title="Loading..." detail="Preparing LINE profile" />}>
+    <Suspense fallback={<PageMessage title="กำลังโหลด..." detail="กำลังเตรียมข้อมูลโปรไฟล์ LINE" />}>
       <HomeContent />
     </Suspense>
   );
@@ -20,29 +20,29 @@ function HomeContent() {
   if (authFailed || error) {
     return (
       <PageMessage
-        title="Failed to authenticate"
-        detail={error || "Please open this page from LINE LIFF again."}
+        title="ยืนยันตัวตนไม่สำเร็จ"
+        detail={error || "กรุณาเปิดหน้านี้จาก LINE LIFF อีกครั้ง"}
       />
     );
   }
 
   if (liff_loading) {
-    return <PageMessage title="Loading..." detail="Preparing LINE profile" />;
+    return <PageMessage title="กำลังโหลด..." detail="กำลังเตรียมข้อมูลโปรไฟล์ LINE" />;
   }
 
   if (!accessToken) {
     return (
       <PageMessage
-        title="Failed to authenticate"
-        detail="Please open this page from LINE LIFF again."
+        title="ยืนยันตัวตนไม่สำเร็จ"
+        detail="กรุณาเปิดหน้านี้จาก LINE LIFF อีกครั้ง"
       />
     );
   }
 
   return (
     <PageMessage
-      title="Ready"
-      detail={`Authenticated as ${displayName || "LINE user"}`}
+      title="พร้อมใช้งาน"
+      detail={`เข้าสู่ระบบในชื่อ ${displayName || "ผู้ใช้ LINE"}`}
     />
   );
 }

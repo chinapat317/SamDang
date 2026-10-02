@@ -66,7 +66,8 @@ func ProfHandler(db *sql.DB) gin.HandlerFunc {
 
 func GroupInfoHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if _, ok := lineUserIDFromRequest(c); !ok {
+		uid, ok := lineUserIDFromRequest(c)
+		if !ok {
 			return
 		}
 
@@ -79,6 +80,16 @@ func GroupInfoHandler(db *sql.DB) gin.HandlerFunc {
 		gid := strings.TrimSpace(req.GID)
 		if gid == "" {
 			c.String(http.StatusBadRequest, "GroupInfoHandler: gid is required")
+			return
+		}
+		isInGroup, err := dbmanage.CheckUserInGroup(db, uid, gid)
+		if err != nil {
+			log.Printf("GroupInfoHandler: failed to check membership: %v\n", err)
+			c.String(http.StatusInternalServerError, "GroupInfoHandler: failed to check membership")
+			return
+		}
+		if !isInGroup {
+			c.String(http.StatusForbidden, "Only group members can access this group")
 			return
 		}
 		log.Printf("GroupInfoHandler gid from frontend: %s", gid)
@@ -299,7 +310,7 @@ func EditGroupShow(db *sql.DB) gin.HandlerFunc {
 			c.String(http.StatusBadRequest, "EditGroupShow: gid is required")
 			return
 		}
-		myGroupTasks, err := dbmanage.MyGroupTasks(db, uid, gid)
+		myGroupTasks, err := dbmanage.MyEditableGroupTasks(db, uid, gid)
 		if err != nil {
 			log.Printf("EditGroupShow: failed to get tasks: %v\n", err)
 			c.String(http.StatusInternalServerError, "EditGroupShow: failed to get tasks")

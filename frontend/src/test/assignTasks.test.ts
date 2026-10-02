@@ -95,6 +95,6 @@ describe("assignTasks", () => {
 
     expect(assigned).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(status.value).toBe("Row 1: selected member has no user hash");
+    expect(status.value).toBe("แถวที่ 1: ไม่พบข้อมูลผู้ใช้ของสมาชิกที่เลือก");
   });
 });

@@ -52,7 +52,7 @@ export default function TopBar({ title = "SamDang" }: TopBarProps) {
         </div>
 
         {liff_loading ? (
-          <div style={{ flexShrink: 0, fontSize: 13, opacity: 0.7 }}>Loading...</div>
+          <div style={{ flexShrink: 0, fontSize: 13, opacity: 0.7 }}>กำลังโหลด...</div>
         ) : displayName ? (
           <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ minWidth: 0, textAlign: "right", lineHeight: 1.1 }}>
@@ -74,7 +74,7 @@ export default function TopBar({ title = "SamDang" }: TopBarProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={pictureUrl}
-                alt="profile"
+                alt="รูปโปรไฟล์"
                 width={34}
                 height={34}
                 style={{ flexShrink: 0, borderRadius: 999, border: "1px solid #ddd" }}
@@ -82,7 +82,7 @@ export default function TopBar({ title = "SamDang" }: TopBarProps) {
             ) : null}
           </div>
         ) : (
-          <div style={{ flexShrink: 0, fontSize: 13, opacity: 0.7 }}>No profile</div>
+          <div style={{ flexShrink: 0, fontSize: 13, opacity: 0.7 }}>ไม่มีข้อมูลโปรไฟล์</div>
         )}
       </div>
     </header>

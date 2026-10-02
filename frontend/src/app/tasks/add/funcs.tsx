@@ -66,11 +66,11 @@ export async function assignTasks(accessToken: string, {
 }: AssignTasksParams): Promise<boolean> {
   setAssignStatus(null);
   if (!groupId) {
-    setAssignStatus("No groupId. Please open from inside group.");
+    setAssignStatus("ไม่พบรหัสกลุ่ม กรุณาเปิดจากภายในกลุ่ม");
     return false;
   }
   if (taskRows.length === 0) {
-    setAssignStatus("No tasks.");
+    setAssignStatus("ไม่มีงาน");
     return false;
   }
 
@@ -78,19 +78,19 @@ export async function assignTasks(accessToken: string, {
     const r = taskRows[i];
 
     if (!r.assignedToName || r.assignedToName.trim() === "") {
-      setAssignStatus(`Row ${i + 1}: please select "assigned to"`);
+      setAssignStatus(`แถวที่ ${i + 1}: กรุณาเลือกผู้รับผิดชอบ`);
       return false;
     }
     if (!GetSelectedUserHash(groupMemJson, r.assignedToName)) {
-      setAssignStatus(`Row ${i + 1}: selected member has no user hash`);
+      setAssignStatus(`แถวที่ ${i + 1}: ไม่พบข้อมูลผู้ใช้ของสมาชิกที่เลือก`);
       return false;
     }
     if (!r.task || r.task.trim() === "") {
-      setAssignStatus(`Row ${i + 1}: task cannot be empty`);
+      setAssignStatus(`แถวที่ ${i + 1}: กรุณาระบุชื่องาน`);
       return false;
     }
     if (!r.dueDate || r.dueDate.trim() === "") {
-      setAssignStatus(`Row ${i + 1}: please select "due date"`);
+      setAssignStatus(`แถวที่ ${i + 1}: กรุณาเลือกวันครบกำหนด`);
       return false;
     }
   }
@@ -119,14 +119,14 @@ export async function assignTasks(accessToken: string, {
 
     const text = await res.text();
     if (!res.ok) {
-      setAssignStatus(`Error ${res.status}: ${text}`);
+      setAssignStatus(`ข้อผิดพลาด ${res.status}: ${text}`);
       return false;
     }
-    setAssignStatus("Assigned");
+    setAssignStatus("มอบหมายงานแล้ว");
     console.log("assign payload:", payload);
     return true;
   } catch (e: unknown) {
-    setAssignStatus(e instanceof Error ? e.message : "Assign failed");
+    setAssignStatus(e instanceof Error ? e.message : "มอบหมายงานไม่สำเร็จ");
     return false;
   } finally {
     setAssigning(false);

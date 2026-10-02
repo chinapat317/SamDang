@@ -3,7 +3,6 @@
 import { GetGroupInfo } from "@/commonFunc/group";
 import { useRequireLiffSession } from "@/commonFunc/liffSession";
 import { ConfirmMyGroupCheckTasks, GetMyGroupDoneTasks } from "@/commonFunc/task";
-import { CheckRole } from "@/commonFunc/user";
 import { useMyGroup } from "@/context/MyGroup";
 import { useLiffSession } from "@/lib/liff-session";
 import { TaskCanEditItem } from "@/types/types";
@@ -18,8 +17,6 @@ export default function CheckPage() {
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [isManager, setIsManager] = useState(false);
-  const [roleChecked, setRoleChecked] = useState(false);
   const [errMsg, setErrMsg] = useState<string | null>(null);
   const [confirmStatus, setConfirmStatus] = useState<string | null>(null);
   const [groupNameJson, setGroupNameJson] = useState<unknown>(
@@ -35,32 +32,10 @@ export default function CheckPage() {
     (typeof groupNameJson === "string" && groupNameJson) ||
     selectedGroup?.group_name ||
     selectedGroup?.line_group_name ||
-    "Group";
+    "กลุ่ม";
 
   useEffect(() => {
-    if (!accessToken) return;
-
-    let cancelled = false;
-
-    async function checkRole() {
-      try {
-        const allowed = await CheckRole(accessToken, ["manager", "admin"]);
-        if (!cancelled) setIsManager(allowed);
-      } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to check role");
-      } finally {
-        if (!cancelled) setRoleChecked(true);
-      }
-    }
-
-    checkRole();
-    return () => {
-      cancelled = true;
-    };
-  }, [accessToken]);
-
-  useEffect(() => {
-    if (!accessToken || !activeGroupId || !roleChecked || !isManager) return;
+    if (!accessToken || !activeGroupId) return;
 
     let cancelled = false;
 
@@ -81,7 +56,7 @@ export default function CheckPage() {
           setLoaded(true);
         }
       } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "Failed to load tasks");
+      if (!cancelled) setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลงานไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -91,7 +66,7 @@ export default function CheckPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, activeGroupId, isManager, roleChecked]);
+  }, [accessToken, activeGroupId]);
 
   function updateTask(index: number, patch: Partial<TaskCanEditItem>) {
     setTasks((current) =>
@@ -102,7 +77,7 @@ export default function CheckPage() {
   async function confirmCheckTasks() {
     if (!accessToken || !activeGroupId) return;
     if (tasks.length === 0) {
-      setConfirmStatus("No tasks to update.");
+      setConfirmStatus("ไม่มีงานให้อัปเดต");
       return;
     }
 
@@ -110,79 +85,75 @@ export default function CheckPage() {
       setConfirming(true);
       setConfirmStatus(null);
       await ConfirmMyGroupCheckTasks(accessToken, activeGroupId, tasks);
-      setConfirmStatus("Checked tasks updated.");
+      setConfirmStatus("อัปเดตการตรวจงานแล้ว");
     } catch (e: unknown) {
-      setConfirmStatus(e instanceof Error ? e.message : "Update failed");
+      setConfirmStatus(e instanceof Error ? e.message : "อัปเดตไม่สำเร็จ");
     } finally {
       setConfirming(false);
     }
   }
 
-  if (liff_loading || (!!accessToken && (!roleChecked || (isManager && activeGroupId && (loading || !loaded))))) {
-    return <PageMessage title="Loading..." detail="Preparing tasks to check" />;
+  if (liff_loading || (!!accessToken && !!activeGroupId && (loading || !loaded))) {
+    return <PageMessage title="กำลังโหลด..." detail="กำลังเตรียมงานสำหรับตรวจสอบ" />;
   }
 
   if (!hasLiffSession) {
     return null;
   }
 
-  if (!isManager) {
-    return <PageMessage title="Manager only" detail="Only manager role can check works." />;
-  }
-
   if (!activeGroupId) {
-    return <PageMessage title="No group selected" detail="Please choose a group from the tasks page." />;
+    return <PageMessage title="ยังไม่ได้เลือกกลุ่ม" detail="กรุณาเลือกกลุ่มจากหน้างาน" />;
   }
 
   if (errMsg) {
-    return <PageMessage title="Cannot load tasks" detail={errMsg} />;
+    return <PageMessage title="ไม่สามารถโหลดงานได้" detail={errMsg} />;
   }
 
   return (
     <main className="checkPage">
-      <div className="pageTitle">check works for group: {groupName}</div>
+      <div className="pageTitle">ตรวจงานสำหรับกลุ่ม: {groupName}</div>
 
       {tasks.length === 0 ? (
-        <div className="emptyState">No tasks found.</div>
+        <div className="emptyState">ไม่พบงาน</div>
       ) : (
-        <section className="taskList" aria-label="Task check list">
+        <section className="taskList" aria-label="รายการตรวจงาน">
           {tasks.map((task, index) => (
             <article className="taskItem" key={task.id || `${task.title}-${index}`}>
               <div className="fieldBlock">
-                <label>Task title</label>
+                <label>ชื่องาน</label>
                 <div className="readonlyField" title={task.title}>
                   {task.title || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock">
-                <label>Assigned by</label>
+                <label>ผู้มอบหมาย</label>
                 <div className="readonlyField" title={task.assigned_by}>
                   {task.assigned_by || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock">
-                <label>Assigned to</label>
+                <label>ผู้รับผิดชอบ</label>
                 <div className="readonlyField" title={task.assigned_to}>
                   {task.assigned_to || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock">
-                <label>Due date</label>
+                <label>วันครบกำหนด</label>
                 <div className="readonlyField" title={task.due_date}>
                   {task.due_date || "-"}
                 </div>
               </div>
 
               <div className="fieldBlock fullWidth">
-                <label>Description</label>
+                <label>รายละเอียด</label>
                 <div className="readonlyArea">{task.description || "-"}</div>
               </div>
 
               <div className="fieldBlock">
-                <label htmlFor={`status-${index}`}>Status</label>
+                <label htmlFor={`status-${index}`}>สถานะ</label>
                 <select
                   id={`status-${index}`}
                   className="inputField"
@@ -191,8 +162,8 @@ export default function CheckPage() {
                     updateTask(index, { status: e.target.value as TaskCanEditItem["status"] })
                   }
                 >
-                  <option value="in progress">in progress</option>
-                  <option value="done">done</option>
+                  <option value="in progress">กำลังดำเนินการ</option>
+                  <option value="done">เสร็จแล้ว</option>
                 </select>
               </div>
 
@@ -203,7 +174,7 @@ export default function CheckPage() {
                   checked={task.checked}
                   onChange={(e) => updateTask(index, { checked: e.target.checked })}
                 />
-                <span>checked</span>
+                <span>ตรวจแล้ว</span>
               </label>
             </article>
           ))}
@@ -218,7 +189,7 @@ export default function CheckPage() {
           disabled={confirming || tasks.length === 0}
           onClick={confirmCheckTasks}
         >
-          {confirming ? "Updating..." : "Confirm"}
+          {confirming ? "กำลังอัปเดต..." : "ยืนยัน"}
         </button>
       </div>
 

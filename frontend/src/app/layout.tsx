@@ -3,7 +3,7 @@ import { MyGroupProvider } from "@/context/MyGroup";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="th" suppressHydrationWarning>
       <body
         suppressHydrationWarning
         style={{

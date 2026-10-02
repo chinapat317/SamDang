@@ -116,7 +116,7 @@ export default function AddWork() {
           setGroupDataLoaded(true);
         }
       } catch (e: unknown) {
-        if (!cancelled) setErrMsg(e instanceof Error ? e.message : "failed");
+      if (!cancelled) setErrMsg(e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -144,24 +144,24 @@ export default function AddWork() {
     (typeof groupNameJson === "string" && groupNameJson) ||
     selectedGroup?.group_name ||
     selectedGroup?.line_group_name ||
-    "Group";
+    "กลุ่ม";
 
   return (
     <main className="taskPage">
-      <div className="taskTitle">Assign tasks for group: {groupName}</div>
+      <div className="taskTitle">มอบหมายงานสำหรับกลุ่ม: {groupName}</div>
 
-      {loading && <div className="taskNotice">Loading group data...</div>}
+      {loading && <div className="taskNotice">กำลังโหลดข้อมูลกลุ่ม...</div>}
       {errMsg && <div className="taskError">{errMsg}</div>}
 
-      <section className="taskPanel" aria-label="Task assignment table">
+      <section className="taskPanel" aria-label="ตารางมอบหมายงาน">
         <div className="taskGrid taskHeader" aria-hidden="true">
-          <div>assigned to</div>
-          <div>assigned by</div>
-          <div>task</div>
-          <div>description</div>
-          <div>assign date</div>
-          <div>due date</div>
-          <div className="alignRight">action</div>
+          <div>ผู้รับผิดชอบ</div>
+          <div>ผู้มอบหมาย</div>
+          <div>งาน</div>
+          <div>รายละเอียด</div>
+          <div>วันที่มอบหมาย</div>
+          <div>วันครบกำหนด</div>
+          <div className="alignRight">การดำเนินการ</div>
         </div>
 
         {taskRows.map((r, index) => {
@@ -170,7 +170,7 @@ export default function AddWork() {
           return (
             <div className="taskGrid taskRow" key={r.id}>
               <div className="taskCell">
-                <span className="mobileLabel">assigned to</span>
+                <span className="mobileLabel">ผู้รับผิดชอบ</span>
                 <div className="memberSelectWrap">
                   <select
                     value={r.assignedToName}
@@ -178,9 +178,9 @@ export default function AddWork() {
                       updateTaskRow(setTaskRows, r.id, { assignedToName: e.target.value })
                     }
                     className="field"
-                    aria-label={`Row ${index + 1} assigned to`}
+                    aria-label={`ผู้รับผิดชอบ แถวที่ ${index + 1}`}
                   >
-                    <option value="">Select member</option>
+                    <option value="">เลือกสมาชิก</option>
                     {MemberList(groupMemJson).map((m) => (
                       <option key={m.display_name} value={m.display_name}>
                         {m.display_name}
@@ -196,62 +196,62 @@ export default function AddWork() {
               </div>
 
               <div className="taskCell">
-                <span className="mobileLabel">assigned by</span>
+                <span className="mobileLabel">ผู้มอบหมาย</span>
                 <div className="readonlyField" title={currentUserName}>
                   {currentUserName}
                 </div>
               </div>
 
               <div className="taskCell">
-                <span className="mobileLabel">task</span>
+                <span className="mobileLabel">งาน</span>
                 <input
                   value={r.task}
                   onChange={(e) => updateTaskRow(setTaskRows, r.id, { task: e.target.value })}
-                  placeholder="Type task..."
+                  placeholder="ระบุชื่องาน..."
                   className="field"
-                  aria-label={`Row ${index + 1} task`}
+                  aria-label={`งาน แถวที่ ${index + 1}`}
                 />
               </div>
 
               <div className="taskCell descriptionCell">
-                <span className="mobileLabel">description</span>
+                <span className="mobileLabel">รายละเอียด</span>
                 <textarea
                   value={r.description}
                   onChange={(e) =>
                     updateTaskRow(setTaskRows, r.id, { description: e.target.value })
                   }
-                  placeholder="Type description..."
+                  placeholder="ระบุรายละเอียด..."
                   className="field textareaField"
-                  aria-label={`Row ${index + 1} description`}
+                  aria-label={`รายละเอียด แถวที่ ${index + 1}`}
                 />
               </div>
 
               <div className="taskCell">
-                <span className="mobileLabel">assign date</span>
+                <span className="mobileLabel">วันที่มอบหมาย</span>
                 <div className="readonlyField" title={r.assignDateISO}>
                   {toPrettyDate(r.assignDateISO)}
                 </div>
               </div>
 
               <div className="taskCell">
-                <span className="mobileLabel">due date</span>
+                <span className="mobileLabel">วันครบกำหนด</span>
                 <input
                   type="date"
                   value={r.dueDate}
                   onChange={(e) => updateTaskRow(setTaskRows, r.id, { dueDate: e.target.value })}
                   className="field"
-                  aria-label={`Row ${index + 1} due date`}
+                  aria-label={`วันครบกำหนด แถวที่ ${index + 1}`}
                 />
               </div>
 
               <div className="taskCell actionCell">
-                <span className="mobileLabel">action</span>
+                <span className="mobileLabel">การดำเนินการ</span>
                 <button
                   type="button"
                   onClick={() => removeTaskRow(setTaskRows, r.id)}
                   className="secondaryButton"
                 >
-                  Remove
+                  ลบ
                 </button>
               </div>
             </div>
@@ -260,7 +260,7 @@ export default function AddWork() {
 
         <div className="addRow">
           <button type="button" onClick={() => addTaskRow(setTaskRows)} className="secondaryButton">
-            + Add task
+            + เพิ่มงาน
           </button>
         </div>
       </section>
@@ -286,7 +286,7 @@ export default function AddWork() {
           disabled={assigning}
           className="primaryButton"
         >
-          {assigning ? "Assigning..." : "Assign"}
+          {assigning ? "กำลังมอบหมาย..." : "มอบหมายงาน"}
         </button>
       </div>
 
@@ -576,8 +576,8 @@ function LoadingScreen() {
       }}
     >
       <div style={{ textAlign: "center", lineHeight: 1.5 }}>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>Loading...</div>
-        <div style={{ fontSize: 13, opacity: 0.72 }}>Preparing group task data</div>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>กำลังโหลด...</div>
+        <div style={{ fontSize: 13, opacity: 0.72 }}>กำลังเตรียมข้อมูลงานของกลุ่ม</div>
       </div>
     </div>
   );
