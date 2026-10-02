@@ -148,6 +148,13 @@ export default function AddWork() {
 
   return (
     <main className="taskPage">
+      <button
+        type="button"
+        className="backButton"
+        onClick={() => navigateInFrontend(router, "/tasks")}
+      >
+        กลับ
+      </button>
       <div className="taskTitle">มอบหมายงานสำหรับกลุ่ม: {groupName}</div>
 
       {loading && <div className="taskNotice">กำลังโหลดข้อมูลกลุ่ม...</div>}
@@ -296,6 +303,23 @@ export default function AddWork() {
           max-width: 1100px;
           margin: 0 auto;
           box-sizing: border-box;
+        }
+
+        .backButton {
+          min-height: 40px;
+          padding: 9px 16px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          color: #111;
+          font: inherit;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .backButton:hover,
+        .backButton:focus-visible {
+          border-color: #111;
         }
 
         .taskEmpty {
@@ -470,6 +494,10 @@ export default function AddWork() {
         }
 
         @media (max-width: 820px) {
+          .backButton {
+            width: 100%;
+          }
+
           .taskHeader {
             display: none;
           }

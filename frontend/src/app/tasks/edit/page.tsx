@@ -156,7 +156,7 @@ export default function EditTasksPage() {
       <button
         type="button"
         className="backButton"
-        onClick={() => navigateInFrontend(router, "/tasks/")}
+        onClick={() => navigateInFrontend(router, "/tasks")}
       >
         กลับ
       </button>

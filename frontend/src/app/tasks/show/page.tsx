@@ -111,7 +111,7 @@ export default function ShowTasksPage() {
       <button
         type="button"
         className="backButton"
-        onClick={() => navigateInFrontend(router, "/tasks/")}
+        onClick={() => navigateInFrontend(router, "/tasks")}
       >
         กลับ
       </button>
