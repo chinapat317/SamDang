@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS line_users (
   id              BIGSERIAL PRIMARY KEY,
   line_user_id    TEXT NOT NULL UNIQUE,
   line_user_hmac  TEXT NOT NULL UNIQUE,
-  role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('super_admin', 'admin', 'member')),
+  role            TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('manager', 'admin', 'member')),
   display_name    TEXT,
   picture_url     TEXT,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()

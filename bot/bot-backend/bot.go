@@ -105,9 +105,9 @@ func BotLeaveGroup(event *linebot.Event,
 func RegisterGroup(event *linebot.Event,
 	db *sql.DB,
 	bot *linebot.Client) {
-	_, err := dbmanage.CheckUserRole(event.Source.UserID, db, []string{"manager", "admin"})
-	if err != nil {
-		err_mes := fmt.Sprintf("ผู้ใช้ไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท", event.Source.UserID)
+	isAllowed, err := dbmanage.CheckUserRole(event.Source.UserID, db, []string{"manager", "admin"})
+	if err != nil || !isAllowed {
+		err_mes := "ผู้ใช้ไม่มีสิทธิ์ลงทะเบียนกลุ่ม กรุณาให้ project manager เป็นคนกดลงทะเบียนกลุ่ม หรือติดต่อ admin ของบริษัท"
 		_, _ = bot.ReplyMessage(
 			event.ReplyToken,
 			linebot.NewTextMessage(err_mes),
