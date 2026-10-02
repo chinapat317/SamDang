@@ -126,7 +126,7 @@ export default function CheckPage() {
       <button
         type="button"
         className="backButton"
-        onClick={() => navigateInFrontend(router, "/tasks/")}
+        onClick={() => navigateInFrontend(router, "/tasks")}
       >
         กลับ
       </button>
