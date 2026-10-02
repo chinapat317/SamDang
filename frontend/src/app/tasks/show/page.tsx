@@ -108,6 +108,13 @@ export default function ShowTasksPage() {
 
   return (
     <main className="showPage">
+      <button
+        type="button"
+        className="backButton"
+        onClick={() => navigateInFrontend(router, "/tasks/")}
+      >
+        กลับ
+      </button>
       <div className="headerRow">
         <div className="pageTitle">งานของกลุ่ม: {groupName}</div>
         <label className="hideDoneControl">
@@ -155,6 +162,24 @@ export default function ShowTasksPage() {
           max-width: 780px;
           margin: 0 auto;
           box-sizing: border-box;
+        }
+
+        .backButton {
+          min-height: 40px;
+          margin-bottom: 12px;
+          padding: 9px 16px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          color: #111;
+          font: inherit;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .backButton:hover,
+        .backButton:focus-visible {
+          border-color: #111;
         }
 
         .headerRow {
@@ -266,6 +291,10 @@ export default function ShowTasksPage() {
         }
 
         @media (max-width: 820px) {
+          .backButton {
+            width: 100%;
+          }
+
           .headerRow {
             display: grid;
             gap: 10px;

@@ -9,6 +9,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         style={{
           margin: 0,
           minWidth: 0,
+          WebkitTextSizeAdjust: "100%",
+          textSizeAdjust: "100%",
           background: "#fff",
           color: "#111",
           fontFamily:

@@ -325,10 +325,11 @@ export default function TasksPage() {
         }
 
         .headerActions {
-          display: flex;
-          justify-content: flex-end;
+          min-width: 0;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(96px, auto));
           gap: 10px;
-          flex: 0 0 auto;
+          flex: 0 1 auto;
         }
 
         h1 {
@@ -376,12 +377,16 @@ export default function TasksPage() {
 
         .primaryButton,
         .secondaryButton {
-          flex: 0 0 auto;
+          min-width: 0;
           min-height: 42px;
-          padding: 10px 16px;
+          padding: clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 16px);
           border-radius: 8px;
           font: inherit;
+          font-size: clamp(12px, 3.4vw, 15px);
           font-weight: 800;
+          line-height: 1.35;
+          overflow-wrap: anywhere;
+          white-space: normal;
           cursor: pointer;
         }
 
@@ -452,13 +457,18 @@ export default function TasksPage() {
 
           .headerActions {
             width: 100%;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .secondaryButton,
           .primaryButton {
             width: 100%;
+          }
+        }
+
+        @media (max-width: 300px) {
+          .headerActions {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

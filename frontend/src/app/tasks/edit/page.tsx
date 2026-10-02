@@ -153,6 +153,13 @@ export default function EditTasksPage() {
 
   return (
     <main className="editPage">
+      <button
+        type="button"
+        className="backButton"
+        onClick={() => navigateInFrontend(router, "/tasks/")}
+      >
+        กลับ
+      </button>
       <div className="pageTitle">แก้ไขงานสำหรับกลุ่ม: {groupName}</div>
 
       {tasks.length === 0 ? (
@@ -240,6 +247,23 @@ export default function EditTasksPage() {
           max-width: 980px;
           margin: 0 auto;
           box-sizing: border-box;
+        }
+
+        .backButton {
+          min-height: 40px;
+          padding: 9px 16px;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          color: #111;
+          font: inherit;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .backButton:hover,
+        .backButton:focus-visible {
+          border-color: #111;
         }
 
         .pageTitle {
@@ -362,6 +386,10 @@ export default function EditTasksPage() {
         }
 
         @media (max-width: 640px) {
+          .backButton {
+            width: 100%;
+          }
+
           .pageTitle {
             text-align: left;
           }
