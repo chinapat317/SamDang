@@ -213,30 +213,6 @@ npm run dev
 
 Open `http://localhost:3000`. Real authenticated workflows must be opened through a configured LIFF application because the API expects a valid LINE access token.
 
-## Tests and code quality
-
-Frontend:
-
-```bash
-cd frontend
-npm run lint
-npm test
-npx tsc --noEmit
-npm run build
-```
-
-Go services:
-
-```bash
-cd bot
-go test ./...
-go build ./...
-
-cd ../frontHandler
-go test ./...
-go build ./...
-```
-
 ## Project structure
 
 ```text
@@ -248,7 +224,3 @@ SamDang/
 |-- proxy/         nginx, TLS, and reverse-proxy configuration
 |-- .env           Local secrets (ignored by Git)
 ```
-
-## Credits
-
-Developed with assistance from OpenAI Codex.
